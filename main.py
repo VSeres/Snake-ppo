@@ -101,7 +101,7 @@ def makeEnv(i, *args, **kwargs):
 
 N_ENV = 12
 N_EPOCH = 1
-MODEL_NAME = 'experimental'
+MODEL_NAME = './model/main'
 if __name__ == '__main__':
     env = [makeEnv(i%4) for i in range(N_ENV)]
     #env = SubprocVecEnv(env)

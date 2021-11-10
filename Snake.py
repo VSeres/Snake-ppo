@@ -227,8 +227,8 @@ class Snake2(gym.Env):
         self.draw()
         pygame.display.update()
         self.fps_controller.tick(self.ticks)
+        pygame.display.set_caption(f'Snake - {self.fps_controller.get_fps():.0f} fps')
         if self.game_over:
-            print(self.fps_controller.get_fps(), 'fps')
             pygame.time.delay(2000)
 
     def draw_rect(self, pos, color) -> None:
@@ -243,7 +243,7 @@ def main():
     import main
     
     game = Snake2(9,9,ticks=100)
-    model = PPO.load('experimental')
+    model = PPO.load('./model/main')
     for _ in range(3):
         done = False
         obs = game.reset() 
