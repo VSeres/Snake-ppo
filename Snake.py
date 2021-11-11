@@ -21,10 +21,14 @@ class Snake2(gym.Env):
         self.playSurface = None
         self.ticks = ticks
 
-        self.red = pygame.Color(255, 0, 0) # snake head
-        self.green = pygame.Color(0, 255, 0) # snake body
-        self.white = pygame.Color(255, 255, 255) # food
-        self.black = pygame.Color(0, 0, 0) # background
+        self.colors = {
+            "head": pygame.Color(255, 0, 0),
+            "body": pygame.Color(0, 255, 0),
+            "food": pygame.Color(255, 255, 255),
+            "wall": pygame.Color(255, 255, 255),
+            "text":pygame.Color(255, 255, 255),
+            "background": pygame.Color(0, 0, 0)
+        }
 
         self.reset()
 
@@ -207,14 +211,14 @@ class Snake2(gym.Env):
         return self.get_state(), reward, self.game_over, info
 
     def draw(self) -> None:
-        self.playSurface.fill(self.black)
+        self.playSurface.fill(self.colors["background"])
         score_font = pygame.font.SysFont('consolas', 20)
-        score_surface = score_font.render(f'Pontok: {self.score}',True, self.white)
+        score_surface = score_font.render(f'Pontok: {self.score}',True, self.colors["text"])
         self.playSurface.blit(score_surface, (5,5))
-        self.draw_rect(self.food, self.white)
+        self.draw_rect(self.food, self.colors["food"])
         for pos in self.snake[1:]:
-            self.draw_rect(pos, self.green)
-        self.draw_rect(self.snake[0], self.red)
+            self.draw_rect(pos, self.colors["body"])
+        self.draw_rect(self.snake[0], self.colors["head"])
     
     def render(self) -> None:
         if self.playSurface is None:
