@@ -1,9 +1,9 @@
 from typing import Tuple
-from numpy.core.fromnumeric import size
 import pygame, sys, random, gym
 from gym import spaces
 import numpy as np
 from stable_baselines3 import PPO
+import colorsys
 
 class Snake2(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -50,7 +50,7 @@ class Snake2(gym.Env):
     def init_interface(self) -> None:
         pygame.init()
         self.fps_controller = pygame.time.Clock()
-        self.playSurface = pygame.display.set_mode((self.width*self.thickness, (self.height*self.thickness)+25))
+        self.playSurface = pygame.display.set_mode((self.width*self.thickness+60, self.height*self.thickness+80))
         pygame.display.set_caption("Snake")
 
     def close(self) -> None:
@@ -216,6 +216,16 @@ class Snake2(gym.Env):
         score_surface = score_font.render(f'Pontok: {self.score}',True, self.colors["text"])
         self.playSurface.blit(score_surface, (5,5))
         self.draw_rect(self.food, self.colors["food"])
+
+        # border top
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, 25, self.thickness*(self.width+2)-50, 25))
+        # border bottom
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, (self.height+1)*self.thickness+25, self.thickness*(self.width+2)-50, 25))
+        # border left
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(0, 25, 30, (self.height+2)*self.thickness))
+        # border right
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(self.thickness*(self.width+2)-25, 25, 25, (self.height+2)*self.thickness))
+
         for pos in self.snake[1:]:
             self.draw_rect(pos, self.colors["body"])
         self.draw_rect(self.snake[0], self.colors["head"])
@@ -237,16 +247,12 @@ class Snake2(gym.Env):
 
     def draw_rect(self, pos, color) -> None:
         pos = list(pos)
-        pos[0] = max(pos[0], 0)
-        pos[0] = min(pos[0], self.width-1)
-        pos[1] = max(pos[1], 0)
-        pos[1] = min(pos[1], self.height-1)
+        pos[0] += 1
+        pos[1] += 1
         pygame.draw.rect(self.playSurface, color, pygame.Rect((pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
 def main():
-    import main
-    
-    game = Snake2(9,9,ticks=100)
+    game = Snake2(6,6,ticks=10)
     model = PPO.load('./model/main')
     for _ in range(3):
         done = False

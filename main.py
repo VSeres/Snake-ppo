@@ -1,7 +1,6 @@
 from numpy.core.fromnumeric import mean, std
 from numpy.lib.function_base import median
 from stable_baselines3 import PPO
-from game import Snake
 from Snake import Snake2
 from stable_baselines3.common.env_checker import check_env
 import time, os, sys
@@ -114,7 +113,7 @@ if __name__ == '__main__':
     for n in range(N_EPOCH):
         model.learning_rate = linear_schedule(0.00001)
         start = time.time()
-        model.learn(total_timesteps=80000000, reset_num_timesteps=True)
+        model.learn(total_timesteps=40000000, reset_num_timesteps=True)
         end = time.time()
         total_time = end-start
         print(f'training: {total_time:.3f} s')
