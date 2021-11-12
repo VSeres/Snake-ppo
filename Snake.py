@@ -32,6 +32,18 @@ class Snake2(gym.Env):
 
         self.reset()
 
+    def random_colors(self):
+        rgb = [random.randrange(0,256)/255 for _ in range(3)]
+        h, l, s = colorsys.rgb_to_hls(*rgb)
+        angle_change = 360/4
+        angle = 0
+        for key in self.colors.keys():
+            if key == 'background' or key == 'text': continue
+            hue = h + angle / 360
+            angle += angle_change
+            color = [round(x*255) for x in colorsys.hls_to_rgb(hue, l, s)]
+            self.colors[key] = pygame.Color(*color)
+
     def reset(self) -> np.ndarray:
         # (width, height)
         middle = (int(self.width/2), int(self.height/2))
@@ -255,6 +267,7 @@ def main():
     game = Snake2(6,6,ticks=10)
     model = PPO.load('./model/main')
     for _ in range(3):
+        game.random_colors()
         done = False
         obs = game.reset() 
         while not done:
