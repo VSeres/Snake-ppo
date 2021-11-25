@@ -4,6 +4,7 @@ from gym import spaces
 import numpy as np
 from stable_baselines3 import PPO
 import colorsys
+import pathlib
 
 UP = 0
 RIGHTUP = 1
@@ -269,7 +270,7 @@ class Snake2(gym.Env):
         self.fps_controller.tick(self.ticks)
         pygame.display.set_caption(f'Snake - {self.fps_controller.get_fps():.0f} fps')
         if self.game_over:
-            pygame.time.delay(2000)
+            self.delay(3)
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
@@ -277,9 +278,17 @@ class Snake2(gym.Env):
         pos[1] += 1
         pygame.draw.rect(self.playSurface, color, pygame.Rect((pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
+    def delay(self, delay) -> None:
+        start = pygame.time.get_ticks() + delay * 1000
+        while start > pygame.time.get_ticks():
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close()
+
+
 def main():
     game = Snake2(9, ticks=50)
-    model = PPO.load('./model/main16-16')
+    model = PPO.load(f'{pathlib.Path(__file__).parent.resolve()}/model/main16-16')
     for _ in range(3):
         game.random_colors()
         done = False
