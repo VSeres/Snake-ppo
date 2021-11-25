@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Callable
 from stable_baselines3.common.vec_env import DummyVecEnv
 from threading import Thread, Lock
-
+import pathlib
 class WindowsInhibitor:
     '''Prevent OS sleep/hibernate in windows; code from:
     https://github.com/h3llrais3r/Deluge-PreventSuspendPlus/blob/master/preventsuspendplus/core.py
@@ -54,11 +54,11 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
     return func
 
-def evaluate(n_games: int, model, *args, **kwargs) -> dict:
+def evaluate(n_games: int, model, size: int, *args, **kwargs) -> dict:
     lock = Lock()
-    summation = {'rewards':[], 'scores':[]}
+    summation = {'scores':[]}
     def game():
-        env = Snake2(*args, **kwargs)
+        env = Snake2(size, *args, **kwargs)
         reward_sum = 0
         obs = env.reset()
         done = False
@@ -67,15 +67,14 @@ def evaluate(n_games: int, model, *args, **kwargs) -> dict:
             obs, reward, done, info = env.step(action)
             reward_sum += reward
         lock.acquire(blocking=True)
-        summation['rewards'].append(reward_sum)
         summation['scores'].append(info['score'])
         lock.release()
 
     processes = [Thread(target=game) for i in range(n_games)]
     [p.start() for p in processes]
-    [p.join()for p in processes]
+    [p.join() for p in processes]
     statistics = {}
-    statistics['avg_reward'] = mean(summation['rewards'])
+    statistics['size'] = f'{size}x{size}'
     statistics['avg_score'] = mean(summation['scores'])
     statistics['median'] = median(summation['scores'])
     statistics['min_score'] = min(summation['scores'])
@@ -85,48 +84,56 @@ def evaluate(n_games: int, model, *args, **kwargs) -> dict:
         print(f'{k}: {v}')
     return statistics
 
+
+
 def makeEnv(i, *args, **kwargs):
-    if i == 0:
+    if i < 1: # 1
         size = 6
-    elif i == 1:
-        size = 12
-    else:
+    elif i < 5: # 4
         size = 9
+    elif i < 9: # 4
+        size = 12
+    else: # 1
+        size = 16
     def _f() -> Snake2:
-        env = Snake2(width=size,height=size,*args, **kwargs)
+        env = Snake2(size, *args, **kwargs)
         check_env(env)
         return env
     return _f
 
-N_ENV = 12
-N_EPOCH = 1
-MODEL_NAME = './model/main'
-if __name__ == '__main__':
-    env = [makeEnv(i%4) for i in range(N_ENV)]
-    #env = SubprocVecEnv(env)
+def main(n_env = 40, n_epcoh = 1, model = 'model/main16-16', shutdown = False, total_timesteps=1e8, learning_rate=2e-4, test_sizes = [6,9,12], new = False):
+    N_ENV = n_env
+    N_EPOCH = n_epcoh
+    MODEL = pathlib.Path(__file__).parent.resolve()+model
+    env = [makeEnv(i%10) for i in range(N_ENV)]
     env = DummyVecEnv(env)
-    #env = Snake2()
-    # model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={'net_arch':[dict(pi=[64,32], vf=[64,32])] })
+    if new:
+        model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={'net_arch':[dict(pi=[16,16], vf=[16,16])] })
+    else:
+        model = PPO.load(MODEL, env=env)
     osSleep = WindowsInhibitor()
     osSleep.inhibit()
-    model = PPO.load(MODEL_NAME, env=env)
+    model.learning_rate = linear_schedule(learning_rate)
     for n in range(N_EPOCH):
-        model.learning_rate = linear_schedule(0.00001)
         start = time.time()
-        model.learn(total_timesteps=40000000, reset_num_timesteps=True)
+        model.learn(total_timesteps, reset_num_timesteps=True)
         end = time.time()
         total_time = end-start
         print(f'training: {total_time:.3f} s')
-        model.save(MODEL_NAME)
-        model = PPO.load(MODEL_NAME, env=env)
-        statistics = evaluate(60, model, 12, 12)
+        model.save(MODEL)
         with open("log.txt", "a") as log:
-            log.write(f'--- {MODEL_NAME} ({n+1}/{N_EPOCH}) ---\n')
-            log.write(f'number of environment: {N_ENV}\n')
+            log.write(f'--- {MODEL} ({n+1}) ---\n')
+            log.write(f'net_arch: {model.policy_kwargs["net_arch"][0]["pi"]}\n')
             log.write(f'finished: {str(datetime.now())} ,  training time: {total_time:.3f} s\n')
-            for k,v in statistics.items():
-                log.write(f'{k}: {v}\n')
+            for size in test_sizes:
+                statistics = evaluate(60, model, size)
+                for k,v in statistics.items():
+                    log.write(f'{k}: {v}\n')
+
     osSleep.uninhibit()
-    os.system("shutdown.exe /s /t 4")
+    if shutdown: os.system("shutdown.exe /s /t 5")
     env.close()
     sys.exit()
+
+if __name__ == '__main__':
+    main(shutdown=True,total_timesteps=2e8, learning_rate=3e4)

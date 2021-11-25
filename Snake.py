@@ -5,19 +5,27 @@ import numpy as np
 from stable_baselines3 import PPO
 import colorsys
 
+UP = 0
+RIGHTUP = 1
+RIGHT = 2
+RIGHTDOWN = 3
+DOWN = 4
+LEFTDOWN = 5
+LEFT = 6
+LEFTUP = 7
+
 class Snake2(gym.Env):
     metadata = {'render.modes': ['human']}
-    def __init__(self, width: int=24, height: int=24, ticks=10):
+    def __init__(self, size: int = 6, ticks : int = 10):
         super(Snake2,self).__init__()
     
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
-        self.width = width
-        self.height = height
         self.thickness = 30
-        self.size = width*height
+        self.dimension = size
+        self.map_size = size**2
         self.action_space = spaces.Discrete(len(self.POSSIBLE_ACTIONS))
         self.observation_space = spaces.Box(low=-1, high=32767, shape=(30,), dtype=np.int16)
-        self.max_distance : np.ndarray = np.array([self.height-1, (min(self.height,self.width)-1)*2, self.width-1, (min(self.height,self.width)-1)*2]*2)
+        self.max_distance : np.ndarray = np.array([self.dimension -1, (min(self.dimension ,self.dimension )-1)*2, self.dimension -1, (min(self.dimension ,self.dimension )-1)*2]*2)
         self.playSurface = None
         self.ticks = ticks
 
@@ -32,7 +40,7 @@ class Snake2(gym.Env):
 
         self.reset()
 
-    def random_colors(self):
+    def random_colors(self) -> None:
         rgb = [random.randrange(0,256)/255 for _ in range(3)]
         h, l, s = colorsys.rgb_to_hls(*rgb)
         angle_change = 360/4
@@ -46,7 +54,7 @@ class Snake2(gym.Env):
 
     def reset(self) -> np.ndarray:
         # (width, height)
-        middle = (int(self.width/2), int(self.height/2))
+        middle = (int(self.dimension /2), int(self.dimension /2))
         self.snake = [ middle, (middle[0]+1, middle[1]), (middle[0]+2, middle[1])]
         self.head_direction = np.zeros(4)
         self.head_direction[3] = 1
@@ -56,13 +64,14 @@ class Snake2(gym.Env):
         self.spawn_food()
         self.game_over = False
         self.score = 0
-        self.steps = int(self.size/2)
+        self.steps = self.map_size*1.5
+        self.step_count = 0
         return self.get_state()
 
     def init_interface(self) -> None:
         pygame.init()
         self.fps_controller = pygame.time.Clock()
-        self.playSurface = pygame.display.set_mode((self.width*self.thickness+60, self.height*self.thickness+80))
+        self.playSurface = pygame.display.set_mode((self.dimension *self.thickness+60, self.dimension *self.thickness+80))
         pygame.display.set_caption("Snake")
 
     def close(self) -> None:
@@ -70,16 +79,16 @@ class Snake2(gym.Env):
         sys.exit()
 
     def spawn_food(self) -> None:
-        food = (random.randrange(0,self.width), random.randrange(0,self.width))
+        food = (random.randrange(0,self.dimension ), random.randrange(0,self.dimension ))
         while food in self.snake:
-            food = (random.randrange(0,self.width), random.randrange(0,self.width))
+            food = (random.randrange(0,self.dimension ), random.randrange(0,self.dimension ))
         self.food = food
 
     def check_game_over(self) -> bool:
         # bounds
-        if self.snake[0][0] < 0 or self.snake[0][0] > self.width-1:
+        if self.snake[0][0] < 0 or self.snake[0][0] > self.dimension -1:
             return True
-        if self.snake[0][1] < 0 or self.snake[0][1] > self.height-1:
+        if self.snake[0][1] < 0 or self.snake[0][1] > self.dimension -1:
             return True
         # self hit
         if self.snake[0] in self.snake[1:]:
@@ -92,46 +101,51 @@ class Snake2(gym.Env):
 
     def get_state(self) -> np.ndarray:
         head = self.snake[0]
-        distance_to_wall = []
+        head_x = head[0]
+        head_y = head[1]
+        distance_to_wall = np.ndarray((8,), dtype=np.int16)
         distance_to_self = self.max_distance.copy()
-        direction_to_food = [0, 0, 0, 0, 0]
+        direction_to_food = np.zeros((5,), dtype=np.int16)
         # uppwards distance to wall
         toLT = min(head)
-        toRT = min(self.width-1-head[0], head[0])
-        toLB = min(head[0], self.height-1-head[1])
-        toRB = min(self.width-1-head[0], self.height-1-head[1])
+        toRT = min(self.dimension -1-head_x, head_x)
+        toLB = min(head_x, self.dimension -1-head_y)
+        toRB = min(self.dimension -1-head_x, self.dimension -1-head_y)
 
-        distance_to_wall.append(head[1])
-        distance_to_wall.append(self.distance((head[0]-toLT, head[1]-toLT), head))
-        distance_to_wall.append(self.width-1-head[0])
-        distance_to_wall.append(self.distance((head[0]+toRT, head[1]-toRT), head))
-        distance_to_wall.append(self.height-1-head[1])
-        distance_to_wall.append(self.distance((head[0]-toLB, head[1]+toLB), head))
-        distance_to_wall.append(head[0])
-        distance_to_wall.append(self.distance((head[0]+toRB, head[1]+toRB), head))
+        distance_to_wall[UP] = head_y
+        distance_to_wall[RIGHTUP] = self.distance((head_x-toLT, head_y-toLT), head)
+        distance_to_wall[RIGHT] = self.dimension -1-head_x
+        distance_to_wall[RIGHTDOWN] = self.distance((head_x+toRT, head_y-toRT), head)
+        distance_to_wall[DOWN] = self.dimension -1-head_y
+        distance_to_wall[LEFTDOWN] = self.distance((head_x-toLB, head_y+toLB), head)
+        distance_to_wall[LEFT] = head_x
+        distance_to_wall[LEFTUP] = self.distance((head_x+toRB, head_y+toRB), head)
 
         for part in self.snake[1:]:
             diagonal = self.diagonal(part, head)
             distance = self.distance(head, part)
+            part_x = part[0]
+            part_y = part[1]
             if diagonal > 0 and distance_to_self[diagonal] > distance:
                 distance_to_self[diagonal] = distance
-                
-            if head[0] == part[0]:
-                if part[1]-head[1] < 0:
-                    if distance_to_self[0] > distance:
-                        distance_to_self[0] = distance
-                else:
-                    if distance_to_self[4] > distance:
-                        distance_to_self[4] = distance
-            elif head[1] == part[1]:
-                if part[0]-head[0] > 0:
-                    if distance_to_self[2] > distance:
-                        distance_to_self[2] = distance
-                else:
-                    if distance_to_self[6] > distance:
-                        distance_to_self[6] = distance
+                continue
 
-        food_direction = (self.food[0] - head[0], self.food[1] - head[1])
+            if head_x == part_x:
+                if part_y-head_y < 0:
+                    if distance_to_self[UP] > distance:
+                        distance_to_self[UP] = distance
+                else:
+                    if distance_to_self[DOWN] > distance:
+                        distance_to_self[DOWN] = distance
+            elif head_y == part_y:
+                if part_x-head_x > 0:
+                    if distance_to_self[RIGHT] > distance:
+                        distance_to_self[RIGHT] = distance
+                else:
+                    if distance_to_self[LEFT] > distance:
+                        distance_to_self[LEFT] = distance
+
+        food_direction = (self.food[0] - head_x, self.food[1] - head_y)
 
         if food_direction[0] < 0:
             direction_to_food[3] = 1
@@ -143,7 +157,7 @@ class Snake2(gym.Env):
             direction_to_food[2] = 1
         direction_to_food[4] = self.distance(head, self.food)
 
-        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, self.head_direction, self.tail_direction, [self.steps])).astype(np.int16)
+        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, self.head_direction, self.tail_direction, [self.score])).astype(np.int16)
 
     def is_on_food(self) -> bool:
         return self.snake[0] == self.food
@@ -152,17 +166,17 @@ class Snake2(gym.Env):
         if pos1[0] == pos2[0] or pos1[1] == pos2[1]:
             return -1
         difference = (pos1[0] - pos2[0], pos1[1] - pos2[1])
-        absulte_value = tuple(map(abs, difference))
+        absulte_value = (abs(difference[0]), abs(difference[1]))
 
         if(absulte_value[0] == absulte_value[1]):
             if difference[0] > 0 and difference[1] < 0:
-                return 1
+                return RIGHTUP
             if difference[0] > 0 and difference[1] > 0:
-                return 3
+                return RIGHTDOWN
             if difference[0] < 0 and difference[1] > 0:
-                return 5
+                return LEFTDOWN
             if difference[0] < 0 and difference[1] < 0:
-                return 7
+                return LEFTUP
         else:
             return -1
         # 7 -> \/ <- 1
@@ -170,10 +184,11 @@ class Snake2(gym.Env):
 
     def step(self, action: int):
         self.steps -= 1
-        info = {'steps_remaining': self.steps, 'score': self.score}
+        info = {'steps_remaining': self.steps, 'score': self.score, 'step_count': self.step_count}
         if self.steps < 0:
             self.game_over = True
             return self.get_state(), -20, self.game_over, info
+        self.step_count += 1
         x = self.snake[0][0]
         y = self.snake[0][1]
         if action == 0:
@@ -192,13 +207,13 @@ class Snake2(gym.Env):
         reward = 0
         if self.check_game_over():
             self.game_over = True
-            reward = -2
+            reward = -4
 
         elif self.is_on_food():
             self.score += 1
-            self.steps = int(self.size*0.75+self.score*1.5)
-            if len(self.snake) == self.size:
-                reward = 10
+            self.steps = int(self.map_size*2+self.score)
+            if len(self.snake) == self.map_size:
+                reward = (2*self.map_size**2) / self.step_count
                 self.game_over = True
             else:
                 reward = 1
@@ -220,6 +235,7 @@ class Snake2(gym.Env):
             self.tail_direction[3] = 1
 
         info['score'] = self.score
+        info['step_count'] = self.step_count
         return self.get_state(), reward, self.game_over, info
 
     def draw(self) -> None:
@@ -230,13 +246,13 @@ class Snake2(gym.Env):
         self.draw_rect(self.food, self.colors["food"])
 
         # border top
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, 25, self.thickness*(self.width+2)-50, 25))
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, 25, self.thickness*(self.dimension +2)-50, 25))
         # border bottom
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, (self.height+1)*self.thickness+25, self.thickness*(self.width+2)-50, 25))
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(25, (self.dimension +1)*self.thickness+25, self.thickness*(self.dimension +2)-50, 25))
         # border left
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(0, 25, 30, (self.height+2)*self.thickness))
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(0, 25, 30, (self.dimension +2)*self.thickness))
         # border right
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(self.thickness*(self.width+2)-25, 25, 25, (self.height+2)*self.thickness))
+        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(self.thickness*(self.dimension +2)-25, 25, 25, (self.dimension +2)*self.thickness))
 
         for pos in self.snake[1:]:
             self.draw_rect(pos, self.colors["body"])
@@ -245,8 +261,6 @@ class Snake2(gym.Env):
     def render(self) -> None:
         if self.playSurface is None:
             self.init_interface()
-        if len(self.snake) == self.width*self.height:
-            print('BINGO!!')
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.close()
@@ -257,25 +271,23 @@ class Snake2(gym.Env):
         if self.game_over:
             pygame.time.delay(2000)
 
-    def draw_rect(self, pos, color) -> None:
+    def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
         pos[0] += 1
         pos[1] += 1
         pygame.draw.rect(self.playSurface, color, pygame.Rect((pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
 def main():
-    game = Snake2(6,6,ticks=10)
-    model = PPO.load('./model/main')
+    game = Snake2(9, ticks=50)
+    model = PPO.load('./model/main16-16')
     for _ in range(3):
         game.random_colors()
         done = False
         obs = game.reset() 
         while not done:
-            prev_obs = obs
             action, _state = model.predict(obs)
             obs, _reward, done, info = game.step(action=action)
             game.render()
-        print(info)
     return None
 if __name__ == '__main__':
     main()
