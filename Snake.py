@@ -7,9 +7,10 @@ from gym import spaces
 import numpy as np
 
 import colorsys
-import pathlib
 
-from player import PPOAgent
+from stable_baselines3.common.base_class import BaseAlgorithm
+
+from player import HumanAgent, PPOAgent
 
 UP = 0
 RIGHTUP = 1
@@ -24,7 +25,7 @@ LEFTUP = 7
 class Snake2(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, size: int = 6, ticks: int = 10, agent=None):
+    def __init__(self, size: int = 6, ticks: int = 10):
         super(Snake2, self).__init__()
 
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
@@ -38,7 +39,6 @@ class Snake2(gym.Env):
             [self.dimension - 1, (min(self.dimension, self.dimension)-1)*2, self.dimension - 1, (min(self.dimension, self.dimension)-1)*2]*2)
         self.playSurface = None
         self.ticks = ticks
-        self.agent = agent
         self.colors = {
             "head": pygame.Color(255, 0, 0),
             "body": pygame.Color(0, 255, 0),
@@ -293,16 +293,10 @@ class Snake2(gym.Env):
     def render(self) -> None:
         if self.playSurface is None:
             self.init_interface()
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.close()
         self.draw()
         pygame.display.update()
-        self.fps_controller.tick(self.ticks)
         pygame.display.set_caption(
             f'Snake - {self.fps_controller.get_fps():.0f} fps')
-        if self.game_over:
-            self.delay(3)
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
@@ -312,27 +306,33 @@ class Snake2(gym.Env):
             (pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
     def delay(self, delay) -> None:
-        start = pygame.time.get_ticks() + delay * 1000
-        while start > pygame.time.get_ticks():
+        end = pygame.time.get_ticks() + delay * 1000
+        while end > pygame.time.get_ticks():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close()
 
-    def play(self, random_color=True) -> Tuple[bool, int]:
-        self.random_colors()
+    def play(self, agent: BaseAlgorithm, random_color: bool = True) -> Tuple[bool, int]:
+        if random_color: self.random_colors()
         obs = self.reset()
         self.render()
+        self.delay(1)
         while not self.game_over:
-            action = self.agent.step(obs)
+            action = agent.step(obs)
             obs, _reward, _done, info = self.step(action)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close()
             self.render()
+            self.fps_controller.tick(self.ticks)
         print(info)
+        self.delay(4)
         return len(self.snake) == self.map_size, info['score'],
 
 
 def main():
-    game = Snake2(9, ticks=50, agent=PPOAgent())
-    game.play()
+    game = Snake2(12, ticks=6)
+    game.play(HumanAgent())
 
 
 if __name__ == '__main__':
