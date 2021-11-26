@@ -247,6 +247,7 @@ class Snake2(gym.Env):
         if self.check_game_over():
             self.game_over = True
             reward = -4
+            self.snake.pop()
 
         elif self.is_on_food():
             self.score += 1
