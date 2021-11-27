@@ -280,7 +280,8 @@ class Snake2(gym.Env):
     def draw(self) -> None:
         self.screen.fill(self.colors["background"])
         centerx = self.screen.get_size()[0]
-        self.draw_text(f'Score: {self.score}   Speed: {self.ticks}', 20, centerx/2, 15)
+        self.draw_text(
+            f'Score: {self.score}   Speed: {self.ticks}', 20, centerx/2, 15)
         self.draw_rect(self.food, self.colors["food"])
 
         # border top
@@ -342,7 +343,8 @@ class Snake2(gym.Env):
                         self.ticks += 1
                     if event.key == pygame.K_KP_MINUS:
                         self.ticks -= 1
-                        if self.ticks <= 0 : self.ticks = 1
+                        if self.ticks <= 0:
+                            self.ticks = 1
             self.render()
             self.clock.tick(self.ticks)
         self._end_screen()
@@ -402,8 +404,10 @@ class Snake2(gym.Env):
         map_index = 0
         player_index = 0
         click = False
-        player_button = Button(f'Player: {player[player_index]}', 30, 50, 20, 400, 100)
-        size_button = Button(f'Map size: {map_size[map_index]}', 30, 50, 140, 400, 100)
+        player_button = Button(
+            f'Player: {player[player_index]}', 30, 50, 20, 400, 100)
+        size_button = Button(
+            f'Map size: {map_size[map_index]}', 30, 50, 140, 400, 100)
         difficulty_button = Button('Difficulty: Medium', 30, 50, 260, 400, 100)
         start_button = Button('Start game', 30, 50, 380, 400, 100)
         while True:
@@ -463,6 +467,7 @@ class Snake2(gym.Env):
 
 class Button(pygame.Rect):
     env: Snake2
+
     def __init__(self, text: str, font_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = (200, 50, 60)
