@@ -81,6 +81,7 @@ class Snake2(gym.Env):
 
     def init_interface(self) -> None:
         pygame.init()
+        Button.env = self
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((500, 500))
         pygame.display.set_caption("Snake")
@@ -306,7 +307,7 @@ class Snake2(gym.Env):
         self.draw()
         pygame.display.update()
         pygame.display.set_caption(
-            f'Snake-{self.dimension} - {self.clock.get_fps():.0f} fps')
+            f'Snake - {self.clock.get_fps():.0f} fps')
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
@@ -366,17 +367,16 @@ class Snake2(gym.Env):
     def play(self):
         self.init_interface()
         click = False
-        start_button = Button(self, 'Start game', 40, 50, 50, 400, 175)
-        quit_button = Button(self, 'Exit', 40, 50, 275, 400, 175)
+        start_button = Button('Start game', 40, 50, 50, 400, 175)
+        quit_button = Button('Exit', 40, 50, 275, 400, 175)
         while True:
             self.screen.fill(self.colors['background'])
 
-            mouse = pygame.mouse.get_pos()
-            if start_button.hover(mouse):
+            if start_button.hover():
                 if click:
                     self.settings()
                     self.screen = pygame.display.set_mode((500, 500))
-            if quit_button.hover(mouse):
+            if quit_button.hover():
                 if click:
                     self.close()
 
@@ -399,28 +399,28 @@ class Snake2(gym.Env):
     def settings(self):
         player = ['AI', 'Human']
         map_size = [6, 9, 12, 16]
+        difficulty = [2, 5, 8]
+        diff_index = 1
         map_index = 0
         player_index = 0
         click = False
-        player_button = Button(
-            self, f'Player: {player[player_index]}', 30, 50, 50, 400, 100)
-        size_button = Button(
-            self, f'Map size: {map_size[map_index]}', 30, 50, 200, 400, 100)
-        start_button = Button(self, 'Start game', 30, 50, 350, 400, 100)
+        player_button = Button(f'Player: {player[player_index]}', 30, 50, 20, 400, 100)
+        size_button = Button(f'Map size: {map_size[map_index]}', 30, 50, 140, 400, 100)
+        difficulty_button = Button('Difficulty: Medium', 30, 50, 260, 400, 100)
+        start_button = Button('Start game', 30, 50, 380, 400, 100)
         while True:
             self.screen.fill(self.colors['background'])
 
-            mouse = pygame.mouse.get_pos()
-            if player_button.hover(mouse):
+            if player_button.hover():
                 if click:
                     player_index = (player_index+1) % len(player)
                     player_button.text = f'Player: {player[player_index]}'
-            if size_button.hover(mouse):
+            if size_button.hover():
                 if click:
                     map_index = (map_index+1) % len(map_size)
                     size_button.text = f'Map size: {map_size[map_index]}'
 
-            if start_button.hover(mouse):
+            if start_button.hover():
                 if click:
                     self.dimension = map_size[map_index]
                     if player_index == 0:
@@ -428,11 +428,22 @@ class Snake2(gym.Env):
                     else:
                         agent = HumanAgent()
                     self._set_game_variabels()
+                    self.ticks = difficulty[diff_index]
                     self.game_loop(agent)
                     return
+            if difficulty_button.hover():
+                if click:
+                    diff_index = (diff_index+1) % len(difficulty)
+                    if diff_index == 0:
+                        difficulty_button.text = 'Difficulty: Easy'
+                    elif diff_index == 1:
+                        difficulty_button.text = 'Difficulty: Medium'
+                    else:
+                        difficulty_button.text = 'Difficulty: Hard'
 
             player_button.draw()
             size_button.draw()
+            difficulty_button.draw()
             start_button.draw()
 
             click = False
@@ -453,14 +464,15 @@ class Snake2(gym.Env):
 
 
 class Button(pygame.Rect):
-    def __init__(self, env: Snake2, text: str, font_size: int, *args, **kwargs):
+    env: Snake2
+    def __init__(self, text: str, font_size: int, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = (200, 50, 60)
-        self.env = env
         self.text = text
         self.font_size = font_size
 
-    def hover(self, mouse):
+    def hover(self):
+        mouse = pygame.mouse.get_pos()
         if self.collidepoint(mouse):
             self.color = (182, 46, 46)
             return True
