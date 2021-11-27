@@ -60,7 +60,7 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 def evaluate(n_games: int, model, size: int, *args, **kwargs) -> dict:
     lock = Lock()
-    summation = {'scores': []}
+    summation = {'scores': [], 'reward': []}
 
     def game():
         env = Snake2(size, *args, **kwargs)
@@ -75,7 +75,7 @@ def evaluate(n_games: int, model, size: int, *args, **kwargs) -> dict:
         summation['scores'].append(info['score'])
         lock.release()
 
-    processes = [Thread(target=game) for i in range(n_games)]
+    processes = [Thread(target=game, daemon=True) for i in range(n_games)]
     [p.start() for p in processes]
     [p.join() for p in processes]
     statistics = {}
@@ -115,12 +115,12 @@ def main(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timesteps
     env = DummyVecEnv(env)
     if new:
         model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={
-                    'net_arch': [dict(pi=[16, 16], vf=[16, 16])]})
+                    'net_arch': [dict(pi=[16, 16], vf=[16, 16, 8])]}, learning_rate=learning_rate)
     else:
         model = PPO.load(MODEL, env=env)
+        model.learning_rate = learning_rate
     osSleep = WindowsInhibitor()
     osSleep.inhibit()
-    model.learning_rate = linear_schedule(learning_rate)
     for n in range(N_EPOCH):
         start = time.time()
         model.learn(total_timesteps, reset_num_timesteps=True)
@@ -147,4 +147,4 @@ def main(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timesteps
 
 
 if __name__ == '__main__':
-    main(shutdown=True, total_timesteps=1e8, n_epcoh=2, learning_rate=3e4)
+    main(shutdown=False, total_timesteps=1e8, n_epcoh=1, learning_rate=linear_schedule(3e-4), model='model-16x16-8')
