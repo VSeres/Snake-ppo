@@ -31,12 +31,10 @@ class Snake2(gym.Env):
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
         self.thickness = 30
         self.dimension = size
-        self.map_size = size**2
         self.action_space = spaces.Discrete(len(self.POSSIBLE_ACTIONS))
         self.observation_space = spaces.Box(
             low=-1, high=32767, shape=(30,), dtype=np.int16)
-        self.max_distance: np.ndarray = np.array(
-            [self.dimension - 1, (min(self.dimension, self.dimension)-1)*2, self.dimension - 1, (min(self.dimension, self.dimension)-1)*2]*2)
+        self._set_game_variabels()
         self.screen = None
         self.ticks = ticks
         self.colors = {
@@ -49,6 +47,11 @@ class Snake2(gym.Env):
         }
 
         self.reset()
+
+    def _set_game_variabels(self):
+        self.map_size = self.dimension**2
+        self.max_distance: np.ndarray = np.array(
+            [self.dimension - 1, (min(self.dimension, self.dimension)-1)*2, self.dimension - 1, (min(self.dimension, self.dimension)-1)*2]*2)
 
     def random_colors(self) -> None:
         rgb = [random.randrange(0, 256)/255 for _ in range(3)]
@@ -79,9 +82,8 @@ class Snake2(gym.Env):
     def init_interface(self) -> None:
         pygame.init()
         self.clock = pygame.time.Clock()
-        self.screen = pygame.display.set_mode(
-            (self.dimension * self.thickness+60, self.dimension * self.thickness+80))
-        pygame.display.set_caption(f"Snake-{self.dimension}")
+        self.screen = pygame.display.set_mode((500,500))
+        pygame.display.set_caption("Snake")
 
     def close(self) -> None:
         pygame.quit()
@@ -267,12 +269,17 @@ class Snake2(gym.Env):
         info['step_count'] = self.step_count
         return self.get_state(), reward, self.game_over, info
 
+    def draw_text(self,text, size, x, y):
+        font = pygame.font.SysFont('consolas', size)
+        text_surface: pygame.Surface = font.render(text, True, self.colors['text'])
+        text_rect = text_surface.get_rect()
+        text_rect.center = (x,y)
+        self.screen.blit(text_surface, text_rect)
+
+
     def draw(self) -> None:
         self.screen.fill(self.colors["background"])
-        score_font = pygame.font.SysFont('consolas', 20)
-        score_surface = score_font.render(
-            f'Pontok: {self.score}', True, self.colors["text"])
-        self.screen.blit(score_surface, (5, 5))
+        self.draw_text(f'Pontok: {self.score}', 20, 70, 15)
         self.draw_rect(self.food, self.colors["food"])
 
         # border top
@@ -280,7 +287,7 @@ class Snake2(gym.Env):
             25, 25, self.thickness*(self.dimension + 2)-50, 25))
         # border bottom
         pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
-            25, (self.dimension + 1)*self.thickness+25, self.thickness*(self.dimension + 2)-50, 25))
+            25, (self.dimension + 1)*self.thickness+25, self.thickness*(self.dimension + 2)-50, 30))
         # border left
         pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             0, 25, 30, (self.dimension + 2)*self.thickness))
@@ -316,9 +323,10 @@ class Snake2(gym.Env):
 
     def game_loop(self, agent: BaseAlgorithm, random_color: bool = True) -> Tuple[bool, int]:
         if random_color: self.random_colors()
+        self.screen = pygame.display.set_mode((self.dimension * self.thickness+60, self.dimension * self.thickness+80))
         obs = self.reset()
         self.render()
-        self.delay(1)
+        self.delay(2)
         while not self.game_over:
             action = agent.step(obs)
             obs, _reward, _done, info = self.step(action)
@@ -331,10 +339,44 @@ class Snake2(gym.Env):
         self.delay(4)
         return len(self.snake) == self.map_size, info['score'],
 
+    def play(self):
+        self.init_interface()
+        click = False
+        while True:
+            self.screen.fill(self.colors['background'])
+
+            start_button = pygame.Rect(50,50,400,175)
+            quit_button = pygame.Rect(50,275,400,175)
+            
+            mouse = pygame.mouse.get_pos()
+            if start_button.collidepoint(mouse) and click:
+                self.dimension = 12
+                self._set_game_variabels()
+                self.game_loop(HumanAgent())
+                self.screen = pygame.display.set_mode((500,500))
+            if quit_button.collidepoint(mouse) and click:
+                self.close()
+            
+            pygame.draw.rect(self.screen, (200,50,60), start_button)
+            pygame.draw.rect(self.screen, (200,50,60), quit_button)
+            self.draw_text('Start game',40, *start_button.center)
+            self.draw_text('Exit',40, *quit_button.center)
+
+            click = False
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.close()
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 1:
+                        click = True
+
+            pygame.display.update()
+            pygame.display.set_caption(f'Snake - {self.clock.get_fps():.0f} fps')
+            self.clock.tick(60)
 
 def main():
-    game = Snake2(12, ticks=60)
-    game.play(PPOAgent(model_name='model-16x16-8'))
+    game = Snake2(12, ticks=6)
+    game.play()
 
 
 if __name__ == '__main__':
