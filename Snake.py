@@ -279,7 +279,8 @@ class Snake2(gym.Env):
 
     def draw(self) -> None:
         self.screen.fill(self.colors["background"])
-        self.draw_text(f'Pontok: {self.score}', 20, 70, 15)
+        centerx = self.screen.get_size()[0]
+        self.draw_text(f'Score: {self.score}   Speed: {self.ticks}', 20, centerx/2, 15)
         self.draw_rect(self.food, self.colors["food"])
 
         # border top
@@ -305,7 +306,7 @@ class Snake2(gym.Env):
         self.draw()
         pygame.display.update()
         pygame.display.set_caption(
-            f'Snake--{self.dimension} - {self.clock.get_fps():.0f} fps')
+            f'Snake-{self.dimension} - {self.clock.get_fps():.0f} fps')
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
@@ -330,12 +331,19 @@ class Snake2(gym.Env):
         obs = self.reset()
         self.render()
         self._count_down()
+        self.ticks = 6
         while not self.game_over:
             action = agent.step(obs)
             obs, _reward, _done, info = self.step(action)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close()
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_KP_PLUS:
+                        self.ticks += 1
+                    if event.key == pygame.K_KP_MINUS:
+                        self.ticks -= 1
+                        if self.ticks <= 0 : self.ticks = 1
             self.render()
             self.clock.tick(self.ticks)
         self._end_screen()
@@ -465,7 +473,7 @@ class Button(pygame.Rect):
 
 
 def main():
-    game = Snake2(12, ticks=6)
+    game = Snake2(ticks=6)
     game.play()
 
 
