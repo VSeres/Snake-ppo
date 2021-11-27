@@ -376,6 +376,7 @@ class Snake2(gym.Env):
                 if click:
                     self.settings()
                     self.screen = pygame.display.set_mode((500, 500))
+                    click = False
             if quit_button.hover():
                 if click:
                     self.close()
@@ -426,7 +427,7 @@ class Snake2(gym.Env):
                 if click:
                     self.dimension = map_size[map_index]
                     if player_index == 0:
-                        agent = PPOAgent()
+                        agent = PPOAgent('model-16x16-8')
                     else:
                         agent = HumanAgent()
                     self._set_game_variabels()
@@ -474,7 +475,7 @@ class Button(pygame.Rect):
         self.text = text
         self.font_size = font_size
 
-    def hover(self):
+    def hover(self) -> bool:
         mouse = pygame.mouse.get_pos()
         if self.collidepoint(mouse):
             self.color = (182, 46, 46)
@@ -482,7 +483,7 @@ class Button(pygame.Rect):
         self.color = (200, 50, 60)
         return False
 
-    def draw(self):
+    def draw(self) -> None:
         pygame.draw.rect(self.env.screen, self.color, self)
         self.env.draw_text(self.text, self.font_size, *self.center)
 
@@ -490,6 +491,7 @@ class Button(pygame.Rect):
 def main():
     game = Snake2()
     game.play()
+    game.close()
 
 
 if __name__ == '__main__':
