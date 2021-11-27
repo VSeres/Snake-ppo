@@ -23,7 +23,7 @@ class HumanAgent:
     def step(self, *args):
         action = self.previous_action
         for event in pygame.event.get():
-            if event.type == pygame.KEYUP:
+            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     action = 0
                 elif event.key == pygame.K_RIGHT:

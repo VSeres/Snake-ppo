@@ -338,7 +338,7 @@ class Snake2(gym.Env):
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close()
-                if event.type == pygame.KEYUP:
+                if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_KP_PLUS:
                         self.ticks += 1
                     if event.key == pygame.K_KP_MINUS:
