@@ -254,6 +254,7 @@ class Snake2(gym.Env):
             self.steps = int(self.map_size*2+self.score)
             if len(self.snake) == self.map_size:
                 reward = int(round((1.6*self.map_size**2) / self.step_count))
+                reward = min(reward, 4)
                 self.game_over = True
             else:
                 reward = 1
@@ -332,8 +333,8 @@ class Snake2(gym.Env):
 
 
 def main():
-    game = Snake2(6, ticks=60)
-    game.play(PPOAgent())
+    game = Snake2(12, ticks=60)
+    game.play(PPOAgent(model_name='model-16x16-8'))
 
 
 if __name__ == '__main__':
