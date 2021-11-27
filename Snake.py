@@ -25,7 +25,7 @@ LEFTUP = 7
 class Snake2(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, size: int = 6, ticks: int = 10):
+    def __init__(self, size: int = 6):
         super(Snake2, self).__init__()
 
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
@@ -36,7 +36,6 @@ class Snake2(gym.Env):
             low=-1, high=32767, shape=(30,), dtype=np.int16)
         self._set_game_variabels()
         self.screen = None
-        self.ticks = ticks
         self.colors = {
             "head": pygame.Color(255, 0, 0),
             "body": pygame.Color(0, 255, 0),
@@ -332,7 +331,6 @@ class Snake2(gym.Env):
         obs = self.reset()
         self.render()
         self._count_down()
-        self.ticks = 6
         while not self.game_over:
             action = agent.step(obs)
             obs, _reward, _done, info = self.step(action)
@@ -485,7 +483,7 @@ class Button(pygame.Rect):
 
 
 def main():
-    game = Snake2(ticks=6)
+    game = Snake2()
     game.play()
 
 
