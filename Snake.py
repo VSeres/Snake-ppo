@@ -37,7 +37,7 @@ class Snake2(gym.Env):
             low=-1, high=32767, shape=(30,), dtype=np.int16)
         self.max_distance: np.ndarray = np.array(
             [self.dimension - 1, (min(self.dimension, self.dimension)-1)*2, self.dimension - 1, (min(self.dimension, self.dimension)-1)*2]*2)
-        self.playSurface = None
+        self.screen = None
         self.ticks = ticks
         self.colors = {
             "head": pygame.Color(255, 0, 0),
@@ -78,10 +78,10 @@ class Snake2(gym.Env):
 
     def init_interface(self) -> None:
         pygame.init()
-        self.fps_controller = pygame.time.Clock()
-        self.playSurface = pygame.display.set_mode(
+        self.clock = pygame.time.Clock()
+        self.screen = pygame.display.set_mode(
             (self.dimension * self.thickness+60, self.dimension * self.thickness+80))
-        pygame.display.set_caption("Snake")
+        pygame.display.set_caption(f"Snake-{self.dimension}")
 
     def close(self) -> None:
         pygame.quit()
@@ -268,24 +268,24 @@ class Snake2(gym.Env):
         return self.get_state(), reward, self.game_over, info
 
     def draw(self) -> None:
-        self.playSurface.fill(self.colors["background"])
+        self.screen.fill(self.colors["background"])
         score_font = pygame.font.SysFont('consolas', 20)
         score_surface = score_font.render(
             f'Pontok: {self.score}', True, self.colors["text"])
-        self.playSurface.blit(score_surface, (5, 5))
+        self.screen.blit(score_surface, (5, 5))
         self.draw_rect(self.food, self.colors["food"])
 
         # border top
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(
+        pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             25, 25, self.thickness*(self.dimension + 2)-50, 25))
         # border bottom
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(
+        pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             25, (self.dimension + 1)*self.thickness+25, self.thickness*(self.dimension + 2)-50, 25))
         # border left
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(
+        pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             0, 25, 30, (self.dimension + 2)*self.thickness))
         # border right
-        pygame.draw.rect(self.playSurface, self.colors['wall'], pygame.Rect(
+        pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             self.thickness*(self.dimension + 2)-25, 25, 25, (self.dimension + 2)*self.thickness))
 
         for pos in self.snake[1:]:
@@ -293,18 +293,18 @@ class Snake2(gym.Env):
         self.draw_rect(self.snake[0], self.colors["head"])
 
     def render(self) -> None:
-        if self.playSurface is None:
+        if self.screen is None:
             self.init_interface()
         self.draw()
         pygame.display.update()
         pygame.display.set_caption(
-            f'Snake - {self.fps_controller.get_fps():.0f} fps')
+            f'Snake--{self.dimension} - {self.clock.get_fps():.0f} fps')
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
         pos = list(pos)
         pos[0] += 1
         pos[1] += 1
-        pygame.draw.rect(self.playSurface, color, pygame.Rect(
+        pygame.draw.rect(self.screen, color, pygame.Rect(
             (pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
     def delay(self, delay) -> None:
@@ -314,7 +314,7 @@ class Snake2(gym.Env):
                 if event.type == pygame.QUIT:
                     self.close()
 
-    def play(self, agent: BaseAlgorithm, random_color: bool = True) -> Tuple[bool, int]:
+    def game_loop(self, agent: BaseAlgorithm, random_color: bool = True) -> Tuple[bool, int]:
         if random_color: self.random_colors()
         obs = self.reset()
         self.render()
@@ -326,7 +326,7 @@ class Snake2(gym.Env):
                 if event.type == pygame.QUIT:
                     self.close()
             self.render()
-            self.fps_controller.tick(self.ticks)
+            self.clock.tick(self.ticks)
         print(info)
         self.delay(4)
         return len(self.snake) == self.map_size, info['score'],
