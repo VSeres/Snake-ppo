@@ -199,7 +199,7 @@ class Snake2(gym.Env):
         else:
             head_direction[3] = 1
 
-        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.score])).astype(np.int16)
+        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.map_size - len(self.snake)])).astype(np.int16)
 
     def is_on_food(self) -> bool:
         return self.snake[0] == self.food
@@ -366,6 +366,9 @@ class Snake2(gym.Env):
 
     def play(self):
         self.init_interface()
+        self.diff_index = 1
+        self.map_index = 0
+        self.player_index = 0
         click = False
         start_button = Button('Start game', 40, 50, 50, 400, 175)
         quit_button = Button('Exit', 40, 50, 275, 400, 175)
@@ -401,48 +404,41 @@ class Snake2(gym.Env):
         player = ['AI', 'Human']
         map_size = [6, 9, 12, 16]
         difficulty = [2, 5, 8]
-        diff_index = 1
-        map_index = 0
-        player_index = 0
+        diff_name = ['Easy', 'Medium', 'Hard']
         click = False
         player_button = Button(
-            f'Player: {player[player_index]}', 30, 50, 20, 400, 100)
+            f'Player: {player[self.player_index]}', 30, 50, 20, 400, 100)
         size_button = Button(
-            f'Map size: {map_size[map_index]}', 30, 50, 140, 400, 100)
-        difficulty_button = Button('Difficulty: Medium', 30, 50, 260, 400, 100)
+            f'Map size: {map_size[self.map_index]}', 30, 50, 140, 400, 100)
+        difficulty_button = Button(f'Difficulty: {diff_name[self.diff_index]}', 30, 50, 260, 400, 100)
         start_button = Button('Start game', 30, 50, 380, 400, 100)
         while True:
             self.screen.fill(self.colors['background'])
 
             if player_button.hover():
                 if click:
-                    player_index = (player_index+1) % len(player)
-                    player_button.text = f'Player: {player[player_index]}'
+                    self.player_index = (self.player_index+1) % len(player)
+                    player_button.text = f'Player: {player[self.player_index]}'
             if size_button.hover():
                 if click:
-                    map_index = (map_index+1) % len(map_size)
-                    size_button.text = f'Map size: {map_size[map_index]}'
+                    self.map_index = (self.map_index+1) % len(map_size)
+                    size_button.text = f'Map size: {map_size[self.map_index]}'
 
             if start_button.hover():
                 if click:
-                    self.dimension = map_size[map_index]
-                    if player_index == 0:
-                        agent = PPOAgent('model-16x16-8')
+                    self.dimension = map_size[self.map_index]
+                    if self.player_index == 0:
+                        agent = PPOAgent('16x16-8')
                     else:
                         agent = HumanAgent()
                     self._set_game_variabels()
-                    self.ticks = difficulty[diff_index]
+                    self.ticks = difficulty[self.diff_index]
                     self.game_loop(agent)
                     return
             if difficulty_button.hover():
                 if click:
-                    diff_index = (diff_index+1) % len(difficulty)
-                    if diff_index == 0:
-                        difficulty_button.text = 'Difficulty: Easy'
-                    elif diff_index == 1:
-                        difficulty_button.text = 'Difficulty: Medium'
-                    else:
-                        difficulty_button.text = 'Difficulty: Hard'
+                    self.diff_index = (self.diff_index+1) % len(difficulty)
+                    difficulty_button.text = f'Difficulty: {diff_name[self.diff_index]}'
 
             player_button.draw()
             size_button.draw()
@@ -491,7 +487,6 @@ class Button(pygame.Rect):
 def main():
     game = Snake2()
     game.play()
-    game.close()
 
 
 if __name__ == '__main__':
