@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Any, Tuple, Union
 import pygame
 import sys
 import random
@@ -8,9 +8,7 @@ import numpy as np
 
 import colorsys
 
-from stable_baselines3.common.base_class import BaseAlgorithm
-
-from player import HumanAgent, PPOAgent
+from player import Agent, HumanAgent, PPOAgent
 
 UP = 0
 RIGHTUP = 1
@@ -23,9 +21,19 @@ LEFTUP = 7
 
 
 class Snake2(gym.Env):
+    """
+    Snake játék megvalósítása.
+    Ez van felhasználva a tanuláshoz és a játék futtatásához.
+    OpenAi gym környezetet kiterjeszti
+
+    :ivar size: pályamérete, csak a tanitáshoz szükséges
+    :ivar thickness: blokkok mérete
+    :ivar dimension: a pálya mérete
+    :ivar colors: Szinek a különbözö elemekhez
+    """
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, size: int = 6):
+    def __init__(self, size: int = None):
         super(Snake2, self).__init__()
 
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
@@ -48,11 +56,17 @@ class Snake2(gym.Env):
         self.reset()
 
     def _set_game_variabels(self):
+        """
+        Beállítja a pálya méretét és a maximum távolságokat
+        """
         self.map_size = self.dimension**2
         self.max_distance: np.ndarray = np.array(
             [self.dimension - 1, (min(self.dimension, self.dimension)-1)*2, self.dimension - 1, (min(self.dimension, self.dimension)-1)*2]*2)
 
-    def random_colors(self) -> None:
+    def random_colors(self):
+        """
+        Véletlenszerű szinek generálása a pályához
+        """
         rgb = [random.randrange(0, 256)/255 for _ in range(3)]
         h, l, s = colorsys.rgb_to_hls(*rgb)
         angle_change = 360/4
@@ -66,6 +80,11 @@ class Snake2(gym.Env):
             self.colors[key] = pygame.Color(*color)
 
     def reset(self) -> np.ndarray:
+        """
+        Visszaállítja a környezetet a kiindulási állapotba
+
+        :return: a környezet állapotát
+        """
         # (width, height)
         middle = (int(self.dimension / 2), int(self.dimension / 2))
         self.snake = [middle, (middle[0]+1, middle[1]),
@@ -78,18 +97,28 @@ class Snake2(gym.Env):
         self.step_count = 0
         return self.get_state()
 
-    def init_interface(self) -> None:
+    def init_interface(self):
+        """
+        A pygame ablakhoz szükséges beállítások
+        """
         pygame.init()
         Button.env = self
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((500, 500))
         pygame.display.set_caption("Snake")
 
-    def close(self) -> None:
+    def close(self):
+        """
+        A programbol való kilépés
+        Automatikusan meg van hiva amikor a környezet garbage collected
+        """
         pygame.quit()
         sys.exit()
 
-    def spawn_food(self) -> None:
+    def spawn_food(self):
+        """
+        Lehelyez a pályán egy új ennivalót
+        """
         food = (random.randrange(0, self.dimension),
                 random.randrange(0, self.dimension))
         while food in self.snake:
@@ -98,6 +127,11 @@ class Snake2(gym.Env):
         self.food = food
 
     def check_game_over(self) -> bool:
+        """
+        Le ellenörzi hogy a kigyó feje kint van a pályáról vagy nekiment a kigyo testének
+
+        :return: neki ment e valaminek
+        """
         # bounds
         if self.snake[0][0] < 0 or self.snake[0][0] > self.dimension - 1:
             return True
@@ -110,16 +144,34 @@ class Snake2(gym.Env):
         return False
 
     def distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+        """
+        Visszaadja két pont manhattan távolságát
+
+        :param pos1: első pont
+        :param pos2: második pont
+
+        :return: két pont közötti távolság
+        """
         return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
 
     def get_state(self) -> np.ndarray:
+        """
+        Kiszámolja az agentnek a pálya állapotát
+        
+        :return: pálya állapota
+            8 irányba a távolságot magátol és a pálya szélétől 
+            merre van és milyen mesze az enivaló
+            a kinhó fejének és farkának haladási iránya
+        
+        """
         head = self.snake[0]
         head_x = head[0]
         head_y = head[1]
         distance_to_wall = np.ndarray((8,), dtype=np.int16)
         distance_to_self = self.max_distance.copy()
         direction_to_food = np.zeros((5,), dtype=np.int16)
-        # uppwards distance to wall
+
+        # distance to wall
         toLT = min(head)
         toRT = min(self.dimension - 1-head_x, head_x)
         toLB = min(head_x, self.dimension - 1-head_y)
@@ -138,6 +190,7 @@ class Snake2(gym.Env):
         distance_to_wall[LEFTUP] = self.distance(
             (head_x+toRB, head_y+toRB), head)
 
+        # distance to body
         for part in self.snake[1:]:
             diagonal = self.diagonal(part, head)
             distance = self.distance(head, part)
@@ -164,6 +217,7 @@ class Snake2(gym.Env):
 
         food_direction = (self.food[0] - head_x, self.food[1] - head_y)
 
+        # food direction
         if food_direction[0] < 0:
             direction_to_food[3] = 1
         else:
@@ -202,9 +256,16 @@ class Snake2(gym.Env):
         return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.map_size - len(self.snake)])).astype(np.int16)
 
     def is_on_food(self) -> bool:
+        """:return: a kigyó feje ennivalón van-e"""
         return self.snake[0] == self.food
 
     def diagonal(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+        """
+        Kiszámolja hogy meilyik átlón van az egyok ponthoz képes a másik
+
+        :return: -1 ha nem átolósak a pontok, 1 jobbra fel, 3 jobbra le, 5 balra le, 7 balra fel
+        
+        """
         if pos1[0] == pos2[0] or pos1[1] == pos2[1]:
             return -1
         difference = (pos1[0] - pos2[0], pos1[1] - pos2[1])
@@ -224,7 +285,15 @@ class Snake2(gym.Env):
         # 7 -> \/ <- 1
         # 5 -> /\ <- 3
 
-    def step(self, action: int):
+    def step(self, action: int) -> Union[tuple[np.ndarray, float, bool, dict[str, Any]], None]:
+        """
+        Egy lépés hajt végre a környezeten
+        Ha a kör véget ért te felelsz a reset() meghivásáért
+
+        :param action: az agent által biztosított müvelet
+
+        :returns: observation (ndarray): A pálya állapota, reward (float): A műveletér járo jutalom, done (bool): A kör végetért-e, info (dict): egyéb adatokat tratalmaz
+        """
         self.steps -= 1
         info = {'steps_remaining': self.steps,
                 'score': self.score, 'step_count': self.step_count}
@@ -270,6 +339,14 @@ class Snake2(gym.Env):
         return self.get_state(), reward, self.game_over, info
 
     def draw_text(self, text, size, x, y):
+        """
+        Szöveg kiírása a képernyőre
+
+        :param text: kiirandó szöveg
+        :param size: kiirandó szöveg betűmérete
+        :param x: szöveg középpontjának X pozíciója
+        :param y: szöveg középpontjának Y pozíciója
+        """
         font = pygame.font.SysFont('consolas', size)
         text_surface: pygame.Surface = font.render(
             text, True, self.colors['text'])
@@ -277,7 +354,10 @@ class Snake2(gym.Env):
         text_rect.center = (x, y)
         self.screen.blit(text_surface, text_rect)
 
-    def draw(self) -> None:
+    def render(self):
+        """
+        A pályát kirajzolja a képernyőre
+        """
         self.screen.fill(self.colors["background"])
         centerx = self.screen.get_size()[0]
         self.draw_text(
@@ -300,23 +380,29 @@ class Snake2(gym.Env):
         for pos in self.snake[1:]:
             self.draw_rect(pos, self.colors["body"])
         self.draw_rect(self.snake[0], self.colors["head"])
-
-    def render(self) -> None:
-        if self.screen is None:
-            self.init_interface()
-        self.draw()
         pygame.display.update()
         pygame.display.set_caption(
             f'Snake - {self.clock.get_fps():.0f} fps')
 
-    def draw_rect(self, pos: Tuple[int, int], color: pygame.Color) -> None:
+    def draw_rect(self, pos: Tuple[int, int], color: pygame.Color):
+        """
+        Egy blokk kirajzolása szolgál
+
+        :param pos: a jobb felső pontja a bloknak
+        :param color: a blokk szine
+        """
         pos = list(pos)
         pos[0] += 1
         pos[1] += 1
         pygame.draw.rect(self.screen, color, pygame.Rect(
             (pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
-    def delay(self, delay) -> None:
+    def delay(self, delay: float):
+        """
+        x másodpercig vár az. Feldolgoza a bezárási eventet.
+
+        :param delay: idő másodperben
+        """
         end = pygame.time.get_ticks() + delay * 1000
         while end > pygame.time.get_ticks():
             pygame.display.update()
@@ -324,7 +410,15 @@ class Snake2(gym.Env):
                 if event.type == pygame.QUIT:
                     self.close()
 
-    def game_loop(self, agent: BaseAlgorithm, random_color: bool = True) -> Tuple[bool, int]:
+    def game_loop(self, agent: Agent, random_color: bool = True) -> Tuple[bool, int]:
+        """
+        A játék fó ciklusa ez csak akkor érhetó el ha play() el inditjuk ell a pogramot
+
+        :param agent: az agent amelyik játszik
+        :param random_color: véletlenszerű szinek
+
+        :return: az agent megnyerte a kört, elért pontszám
+        """
         if random_color:
             self.random_colors()
         self.screen = pygame.display.set_mode(
@@ -351,6 +445,9 @@ class Snake2(gym.Env):
         return len(self.snake) == self.map_size, info['score'],
 
     def _end_screen(self):
+        """
+        A kör végén a pontok megjelenitése
+        """
         text_size = 40 if self.dimension == 6 else 60
         center = list(self.screen.get_rect().center)
         self.draw_text('GAME OVER', text_size, *center)
@@ -359,12 +456,21 @@ class Snake2(gym.Env):
         self.delay(3)
 
     def _count_down(self):
+        """
+        Kör kezdete előtti visszaszámlálás
+        """
         for i in range(3, 0, -1):
             self.draw_text(str(i), 80, *self.screen.get_rect().center)
             self.delay(1)
             self.render()
 
-    def play(self):
+    def play(self, agent: Agent = '16x16-8'):
+        """
+        Ezel a metódussal lehet elindítani a játékot
+        megjeleníti a főmenüt
+
+        :param agent: az AI által használandó model
+        """
         self.init_interface()
         self.diff_index = 1
         self.map_index = 0
@@ -377,7 +483,7 @@ class Snake2(gym.Env):
 
             if start_button.hover():
                 if click:
-                    self.settings()
+                    self.settings(agent)
                     self.screen = pygame.display.set_mode((500, 500))
                     click = False
             if quit_button.hover():
@@ -400,7 +506,13 @@ class Snake2(gym.Env):
                 f'Snake - {self.clock.get_fps():.0f} fps')
             self.clock.tick(60)
 
-    def settings(self):
+    def settings(self, agent: Agent):
+        """
+        A kör elinditása előtti menü megjelenítése
+        Itt lehet beállítani a játékos, pálya méretét és a nehézséget
+
+        :param agent: az AI által használandó model
+        """
         player = ['AI', 'Human']
         map_size = [6, 9, 12, 16]
         difficulty = [2, 5, 8]
@@ -428,7 +540,7 @@ class Snake2(gym.Env):
                 if click:
                     self.dimension = map_size[self.map_index]
                     if self.player_index == 0:
-                        agent = PPOAgent('16x16-8')
+                        agent = PPOAgent(agent)
                     else:
                         agent = HumanAgent()
                     self._set_game_variabels()
@@ -463,6 +575,13 @@ class Snake2(gym.Env):
 
 
 class Button(pygame.Rect):
+    """
+    Gombokat a megvalósito osztály
+
+    :cvar env: jelenlegi Snake instance
+    :ivar text: gombon szereplő szöveg
+    :ivar font_size: szöveg betűméret
+    """
     env: Snake2
 
     def __init__(self, text: str, font_size: int, *args, **kwargs):
@@ -472,6 +591,12 @@ class Button(pygame.Rect):
         self.font_size = font_size
 
     def hover(self) -> bool:
+        """
+        Visszaadja hogy az egér ezen gombon van
+        ha ezen a gombon van az egér átszinezi
+
+        :return: ezen gombon van-e az egér
+        """
         mouse = pygame.mouse.get_pos()
         if self.collidepoint(mouse):
             self.color = (182, 46, 46)
@@ -479,9 +604,12 @@ class Button(pygame.Rect):
         self.color = (200, 50, 60)
         return False
 
-    def draw(self) -> None:
+    def draw(self):
+        """
+        Kirajzolja a gombot
+        """
         pygame.draw.rect(self.env.screen, self.color, self)
-        self.env.draw_text(self.text, self.font_size, *self.center)
+        Button.env.draw_text(self.text, self.font_size, *self.center)
 
 
 def main():

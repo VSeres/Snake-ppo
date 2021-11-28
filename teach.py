@@ -1,6 +1,7 @@
 from numpy.core.fromnumeric import mean, std
 from numpy.lib.function_base import median
 from stable_baselines3 import PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
 from Snake import Snake2
 from stable_baselines3.common.env_checker import check_env
 import time
@@ -11,7 +12,6 @@ from typing import Callable
 from stable_baselines3.common.vec_env import DummyVecEnv
 from threading import Thread, Lock
 import pathlib
-
 
 class WindowsInhibitor:
     '''Prevent OS sleep/hibernate in windows; code from:
@@ -58,12 +58,28 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
     return func
 
 
-def evaluate(n_games: int, model, size: int, *args, **kwargs) -> dict:
+def evaluate(n_games: int, model: BaseAlgorithm, size: int) -> dict:
+    """
+    Ki értékeli a model
+
+    :param n_games: hány kört játszon
+    :param model: teszelendő model
+    :param size: pálya mérete
+
+    :return: statisztika
+      'size': pálya mérete
+      'avg_score': jutalmak átlaga
+      'median': pontok átlaga
+      'min_score': minimum pont
+      'max_score': maximum pont
+      'score_std': pontok szórása
+
+    """
     lock = Lock()
     summation = {'scores': [], 'reward': []}
 
     def game():
-        env = Snake2(size, *args, **kwargs)
+        env = Snake2(size)
         reward_sum = 0
         obs = env.reset()
         done = False
@@ -90,7 +106,13 @@ def evaluate(n_games: int, model, size: int, *args, **kwargs) -> dict:
     return statistics
 
 
-def makeEnv(i, *args, **kwargs):
+def makeEnv(i):
+    """
+    Létrehoza a DummyVecEnv()-hez szükséges wrapper fügvényeket
+
+    :param i: pálya méretének megállapításához van használva
+      minimum 0, maximum 9 lehet
+    """
     if i < 1:  # 1
         size = 6
     elif i < 5:  # 4
@@ -101,16 +123,29 @@ def makeEnv(i, *args, **kwargs):
         size = 16
 
     def _f() -> Snake2:
-        env = Snake2(size, *args, **kwargs)
+        env = Snake2(size)
         check_env(env)
         return env
     return _f
 
 
-def main(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timesteps=1e8, learning_rate=2e-4, test_sizes=[6, 9, 12], new=False):
+def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timesteps=1e8, learning_rate=2e-4, test_sizes=[6, 9, 12], new=False):
+    """
+    Modellt tanítja be
+
+    :param n_env: hány környezeten tanuljon egyszere
+    :param n_epoch: hányszor ismételje meg a tanulást
+    :param model: model neve
+    :param shutdown: számitógépet leállítja a végzet
+    :param total_timesteps: összesen hány lépést tegyünk meg ez befolyásolja a tanulás időtartamát
+    :param learning_rate: tanulási ráta, ez lehet egy függvény vagy egy constans
+    :param test_sizes: mekkor pákákon tesztelje a modelt
+    :param new: új modellt hozzon létre, felülirja ha már létezik
+    """
     N_ENV = n_env
     N_EPOCH = n_epcoh
-    MODEL = str(pathlib.Path(__file__).parent.resolve())+'/model/'+model
+    MODEL = str(pathlib.Path(__file__).parent.resolve())+'\\model\\'+model
+    print(f'Model path: {MODEL}')
     env = [makeEnv(i % 10) for i in range(N_ENV)]
     env = DummyVecEnv(env)
     if new:
@@ -147,4 +182,4 @@ def main(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timesteps
 
 
 if __name__ == '__main__':
-    main(shutdown=False, total_timesteps=1e8, n_epcoh=1, learning_rate=linear_schedule(3e-4), model='model-16x16-8')
+    teach(shutdown=True, total_timesteps=1e8, n_epcoh=1, learning_rate=linear_schedule(3e-4), model='16x16-8')
