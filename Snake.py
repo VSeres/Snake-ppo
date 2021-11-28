@@ -38,7 +38,7 @@ class Snake2(gym.Env):
 
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
         self.thickness = 30
-        self.dimension = size
+        self.dimension = size or 6
         self.action_space = spaces.Discrete(len(self.POSSIBLE_ACTIONS))
         self.observation_space = spaces.Box(
             low=-1, high=32767, shape=(30,), dtype=np.int16)
