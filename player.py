@@ -3,6 +3,7 @@ from stable_baselines3 import PPO
 import numpy as np
 import pygame
 
+
 class Agent:
     def step(self, obs: np.ndarray) -> int:
         raise NotImplementedError
@@ -10,9 +11,10 @@ class Agent:
 
 class PPOAgent(Agent):
     """Ez az agent a stable baselines 3 ban betanított PPO modelt használja
-    
+
     :vari model_route: abszolút útvonal a modellhez
     """
+
     def __init__(self, model_name: str = 'main16-16'):
         """
         a modell a ./model mappábol lesz betöltve
@@ -37,15 +39,17 @@ class PPOAgent(Agent):
         action, _ = self.model.predict(obs)
         return int(action)
 
+
 class HumanAgent(Agent):
     """Az emberi játékost megvalósítása"""
+
     def __init__(self):
         self.previous_action = 3
 
     def step(self, *unused):
         """
         Agent lépése
-        
+
         :return: Az agent lépése
         """
         action = self.previous_action

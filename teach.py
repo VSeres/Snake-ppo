@@ -13,6 +13,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 from threading import Thread, Lock
 import pathlib
 
+
 class WindowsInhibitor:
     '''Prevent OS sleep/hibernate in windows; code from:
     https://github.com/h3llrais3r/Deluge-PreventSuspendPlus/blob/master/preventsuspendplus/core.py
@@ -182,4 +183,5 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
 
 
 if __name__ == '__main__':
-    teach(shutdown=True, total_timesteps=1e8, n_epcoh=1, learning_rate=linear_schedule(3e-4), model='16x16-8')
+    teach(shutdown=True, total_timesteps=1e8, n_epcoh=1,
+          learning_rate=linear_schedule(3e-4), model='16x16-8')

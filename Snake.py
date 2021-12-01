@@ -157,12 +157,12 @@ class Snake2(gym.Env):
     def get_state(self) -> np.ndarray:
         """
         Kiszámolja az agentnek a pálya állapotát
-        
+
         :return: pálya állapota
             8 irányba a távolságot magátol és a pálya szélétől 
             merre van és milyen mesze az enivaló
             a kinhó fejének és farkának haladási iránya
-        
+
         """
         head = self.snake[0]
         head_x = head[0]
@@ -243,7 +243,7 @@ class Snake2(gym.Env):
         Kiszámolja hogy meilyik átlón van az egyok ponthoz képes a másik
 
         :return: -1 ha nem átolósak a pontok, 1 jobbra fel, 3 jobbra le, 5 balra le, 7 balra fel
-        
+
         """
         if pos1[0] == pos2[0] or pos1[1] == pos2[1]:
             return -1
@@ -333,27 +333,27 @@ class Snake2(gym.Env):
         text_rect.center = (x, y)
         self.screen.blit(text_surface, text_rect)
 
-    def direction(pos1: tuple[int,int], pos2: tuple[int,int]) -> Tuple[int,int,int,int]:
-            """
-            Visszaadja a pos1 key képes melyik irányba van a pos2
+    def direction(pos1: tuple[int, int], pos2: tuple[int, int]) -> Tuple[int, int, int, int]:
+        """
+        Visszaadja a pos1 key képes melyik irányba van a pos2
 
-            :param pos1: x, y koordinátája a referencia pontnak
-            :param pos2: x, y koordinátája a vizsgálandó pontnak
+        :param pos1: x, y koordinátája a referencia pontnak
+        :param pos2: x, y koordinátája a vizsgálandó pontnak
 
-            :return: Az első eleme a felfelé, óramutató irányba haladnak az irányok
-            """
-            dir_x = pos2[0] - pos1[0]
-            dir_y = pos2[1] - pos1[1]
-            direction = [0, 0, 0, 0]
-            if dir_y < 0:
-                direction[0] = 1
-            elif dir_y > 0:
-                direction[2] = 1
-            if dir_x > 0:
-                direction[1] = 1
-            elif dir_x < 0:
-                direction[3] = 1
-            return tuple(direction)
+        :return: Az első eleme a felfelé, óramutató irányba haladnak az irányok
+        """
+        dir_x = pos2[0] - pos1[0]
+        dir_y = pos2[1] - pos1[1]
+        direction = [0, 0, 0, 0]
+        if dir_y < 0:
+            direction[0] = 1
+        elif dir_y > 0:
+            direction[2] = 1
+        if dir_x > 0:
+            direction[1] = 1
+        elif dir_x < 0:
+            direction[3] = 1
+        return tuple(direction)
 
     def render(self):
         """
@@ -379,17 +379,19 @@ class Snake2(gym.Env):
             self.thickness*(self.dimension + 2)-25, 25, 25, (self.dimension + 2)*self.thickness))
 
         line = {'direction': None, 'length': 0, 'start': None}
-        for i,pos in enumerate(self.snake[1:]):
+        for i, pos in enumerate(self.snake[1:]):
             pos_direction = Snake2.direction(self.snake[i], pos)
             direction = pos_direction.index(1)
-            if line['direction']  == direction:
+            if line['direction'] == direction:
                 line['length'] += 1
             else:
-                self.draw_line(self.colors["body"], line['start'], line['length'], line['direction'])
+                self.draw_line(
+                    self.colors["body"], line['start'], line['length'], line['direction'])
                 line['direction'] = direction
                 line['length'] = 1
                 line['start'] = pos
-        self.draw_line(self.colors["body"], line['start'], line['length'], line['direction'])
+        self.draw_line(self.colors["body"], line['start'],
+                       line['length'], line['direction'])
         self.draw_rect(self.snake[0], self.colors["head"])
         pygame.display.update()
         pygame.display.set_caption(
@@ -405,9 +407,10 @@ class Snake2(gym.Env):
         pos = list(pos)
         pos[0] += 1
         pos[1] += 1
-        pygame.draw.rect(self.screen, color, pygame.Rect((pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
+        pygame.draw.rect(self.screen, color, pygame.Rect(
+            (pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
 
-    def draw_line(self,color: pygame.Color, start_pos, length, direction):
+    def draw_line(self, color: pygame.Color, start_pos, length, direction):
         """
         Kigyó testét alkotó vonalakat rajozolja ki
 
@@ -420,27 +423,31 @@ class Snake2(gym.Env):
           2 lefelé,
           3 balra 
         """
-        if start_pos is None: return
+        if start_pos is None:
+            return
         start_pos = list(start_pos)
         start_pos[0] += 1
         start_pos[1] += 1
-
         if direction == 0:
             start_pos[1] -= length-1
-            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+25
+            start = ((start_pos[0]*self.thickness)+5,
+                     (start_pos[1]*self.thickness)+25)
             end = self.thickness - 5, length*self.thickness
         elif direction == 1:
-            start = (start_pos[0]*self.thickness), (start_pos[1]*self.thickness)+25
+            start = ((start_pos[0]*self.thickness),
+                     (start_pos[1]*self.thickness)+25)
             end = length*self.thickness, self.thickness-5
         elif direction == 2:
-            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+20
+            start = ((start_pos[0]*self.thickness)+5,
+                     (start_pos[1]*self.thickness)+20)
             end = self.thickness - 5, length*self.thickness
         elif direction == 3:
             start_pos[0] -= length-1
-            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+25
+            start = ((start_pos[0]*self.thickness)+5,
+                     (start_pos[1]*self.thickness)+25)
             end = length*self.thickness, self.thickness-5
 
-        pygame.draw.rect(self.screen, color, pygame.Rect(start,end))
+        pygame.draw.rect(self.screen, color, pygame.Rect(start, end))
 
     def delay(self, delay: float):
         """
@@ -567,7 +574,8 @@ class Snake2(gym.Env):
             f'Player: {player[self.player_index]}', 30, 50, 20, 400, 100)
         size_button = Button(
             f'Map size: {map_size[self.map_index]}', 30, 50, 140, 400, 100)
-        difficulty_button = Button(f'Difficulty: {diff_name[self.diff_index]}', 30, 50, 260, 400, 100)
+        difficulty_button = Button(
+            f'Difficulty: {diff_name[self.diff_index]}', 30, 50, 260, 400, 100)
         start_button = Button('Start game', 30, 50, 380, 400, 100)
         while True:
             self.screen.fill(self.colors['background'])
