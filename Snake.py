@@ -5,7 +5,7 @@ import random
 import gym
 from gym import spaces
 import numpy as np
-
+import operator
 import colorsys
 
 from player import Agent, HumanAgent, PPOAgent
@@ -229,12 +229,9 @@ class Snake2(gym.Env):
         direction_to_food[4] = self.distance(head, self.food)
 
         # tail direction
-        direction_x = self.snake[-2][0]-self.snake[-1][0]
-        direction_y = self.snake[-2][1]-self.snake[-1][1]
-        tail_direction = self.direction(self.snake[-1], self.snake[-2])
+        tail_direction = Snake2.direction(self.snake[-1], self.snake[-2])
         # head direction
-        head_direction = self.direction(head, self.snake[1])
-
+        head_direction = Snake2.direction(self.snake[1], head)
         return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.map_size - len(self.snake)])).astype(np.int16)
 
     def is_on_food(self) -> bool:
@@ -336,7 +333,7 @@ class Snake2(gym.Env):
         text_rect.center = (x, y)
         self.screen.blit(text_surface, text_rect)
 
-    def direction(self, pos1: tuple[int,int], pos2: tuple[int,int]) -> Tuple[int,int,int,int]:
+    def direction(pos1: tuple[int,int], pos2: tuple[int,int]) -> Tuple[int,int,int,int]:
             """
             Visszaadja a pos1 key képes melyik irányba van a pos2
 
@@ -381,12 +378,22 @@ class Snake2(gym.Env):
         pygame.draw.rect(self.screen, self.colors['wall'], pygame.Rect(
             self.thickness*(self.dimension + 2)-25, 25, 25, (self.dimension + 2)*self.thickness))
 
-        for pos in self.snake[1:]:
-            self.draw_rect(pos, self.colors["body"])
+        line = {'direction': None, 'length': 0, 'start': None}
+        for i,pos in enumerate(self.snake[1:]):
+            pos_direction = Snake2.direction(self.snake[i], pos)
+            direction = pos_direction.index(1)
+            if line['direction']  == direction:
+                line['length'] += 1
+            else:
+                self.draw_line(self.colors["body"], line['start'], line['length'], line['direction'])
+                line['direction'] = direction
+                line['length'] = 1
+                line['start'] = pos
+        self.draw_line(self.colors["body"], line['start'], line['length'], line['direction'])
         self.draw_rect(self.snake[0], self.colors["head"])
         pygame.display.update()
         pygame.display.set_caption(
-            f'Snake - {self.clock.get_fps():.0f} fps')
+            f'Snake - {self.clock.get_fps():.0f} ticks')
 
     def draw_rect(self, pos: Tuple[int, int], color: pygame.Color):
         """
@@ -398,8 +405,42 @@ class Snake2(gym.Env):
         pos = list(pos)
         pos[0] += 1
         pos[1] += 1
-        pygame.draw.rect(self.screen, color, pygame.Rect(
-            (pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
+        pygame.draw.rect(self.screen, color, pygame.Rect((pos[0]*self.thickness)+5, (pos[1]*self.thickness)+25, self.thickness-5, self.thickness-5))
+
+    def draw_line(self,color: pygame.Color, start_pos, length, direction):
+        """
+        Kigyó testét alkotó vonalakat rajozolja ki
+
+        :param color: A megjeleniteshez használandó szín
+        :param start_pos: A vonal kiindulópontja
+        :param length: Vonal hossza
+        :param direction: A start_pos hoz képest merre húza a vonalat
+          0 felfelé,
+          1 jobbra,
+          2 lefelé,
+          3 balra 
+        """
+        if start_pos is None: return
+        start_pos = list(start_pos)
+        start_pos[0] += 1
+        start_pos[1] += 1
+
+        if direction == 0:
+            start_pos[1] -= length-1
+            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+25
+            end = self.thickness - 5, length*self.thickness
+        elif direction == 1:
+            start = (start_pos[0]*self.thickness), (start_pos[1]*self.thickness)+25
+            end = length*self.thickness, self.thickness-5
+        elif direction == 2:
+            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+20
+            end = self.thickness - 5, length*self.thickness
+        elif direction == 3:
+            start_pos[0] -= length-1
+            start = (start_pos[0]*self.thickness)+5, (start_pos[1]*self.thickness)+25
+            end = length*self.thickness, self.thickness-5
+
+        pygame.draw.rect(self.screen, color, pygame.Rect(start,end))
 
     def delay(self, delay: float):
         """
@@ -507,7 +548,7 @@ class Snake2(gym.Env):
 
             pygame.display.update()
             pygame.display.set_caption(
-                f'Snake - {self.clock.get_fps():.0f} fps')
+                f'Snake - {self.clock.get_fps():.0f} ticks')
             self.clock.tick(60)
 
     def settings(self, agent: Agent):
@@ -574,7 +615,7 @@ class Snake2(gym.Env):
 
             pygame.display.update()
             pygame.display.set_caption(
-                f'Snake - {self.clock.get_fps():.0f} fps')
+                f'Snake - {self.clock.get_fps():.0f} ticks')
             self.clock.tick(60)
 
 
