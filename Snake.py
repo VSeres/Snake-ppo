@@ -231,27 +231,9 @@ class Snake2(gym.Env):
         # tail direction
         direction_x = self.snake[-2][0]-self.snake[-1][0]
         direction_y = self.snake[-2][1]-self.snake[-1][1]
-        tail_direction = np.zeros(4)
-        if direction_y < 0:
-            tail_direction[0] = 1
-        elif direction_x > 0:
-            tail_direction[1] = 1
-        elif direction_y > 0:
-            tail_direction[2] = 1
-        else:
-            tail_direction[3] = 1
+        tail_direction = self.direction(self.snake[-1], self.snake[-2])
         # head direction
-        head_direction = np.zeros(4)
-        direction_x = head_x-self.snake[2][0]
-        direction_y = head_y-self.snake[2][1]
-        if direction_y < 0:
-            head_direction[0] = 1
-        elif direction_x > 0:
-            head_direction[1] = 1
-        elif direction_y > 0:
-            head_direction[2] = 1
-        else:
-            head_direction[3] = 1
+        head_direction = self.direction(head, self.snake[1])
 
         return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.map_size - len(self.snake)])).astype(np.int16)
 
@@ -353,6 +335,28 @@ class Snake2(gym.Env):
         text_rect = text_surface.get_rect()
         text_rect.center = (x, y)
         self.screen.blit(text_surface, text_rect)
+
+    def direction(self, pos1: tuple[int,int], pos2: tuple[int,int]) -> Tuple[int,int,int,int]:
+            """
+            Visszaadja a pos1 key képes melyik irányba van a pos2
+
+            :param pos1: x, y koordinátája a referencia pontnak
+            :param pos2: x, y koordinátája a vizsgálandó pontnak
+
+            :return: Az első eleme a felfelé, óramutató irányba haladnak az irányok
+            """
+            dir_x = pos2[0] - pos1[0]
+            dir_y = pos2[1] - pos1[1]
+            direction = [0, 0, 0, 0]
+            if dir_y < 0:
+                direction[0] = 1
+            elif dir_y > 0:
+                direction[2] = 1
+            if dir_x > 0:
+                direction[1] = 1
+            elif dir_x < 0:
+                direction[3] = 1
+            return tuple(direction)
 
     def render(self):
         """
