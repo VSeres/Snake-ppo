@@ -5,11 +5,16 @@ import pygame
 
 
 class Agent:
+    """
+    :cvar name: Megjelenitéshez használt név
+    """
+    name: str
     def step(self, obs: np.ndarray) -> int:
         raise NotImplementedError
 
 
 class PPOAgent(Agent):
+    name = 'AI'
     """Ez az agent a stable baselines 3 ban betanított PPO modelt használja
 
     :vari model_route: abszolút útvonal a modellhez
@@ -42,7 +47,7 @@ class PPOAgent(Agent):
 
 class HumanAgent(Agent):
     """Az emberi játékost megvalósítása"""
-
+    name = 'Human'
     def __init__(self):
         self.previous_action = 3
 

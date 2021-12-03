@@ -41,7 +41,7 @@ class Snake2(gym.Env):
         self.dimension = size or 6
         self.action_space = spaces.Discrete(len(self.POSSIBLE_ACTIONS))
         self.observation_space = spaces.Box(
-            low=-1, high=32767, shape=(30,), dtype=np.int16)
+            low=-1, high=32767, shape=(29,), dtype=np.int16)
         self._set_game_variabels()
         self.screen = None
         self.colors = {
@@ -232,7 +232,7 @@ class Snake2(gym.Env):
         tail_direction = Snake2.direction(self.snake[-1], self.snake[-2])
         # head direction
         head_direction = Snake2.direction(self.snake[1], head)
-        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction, [self.map_size - len(self.snake)])).astype(np.int16)
+        return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction)).astype(np.int16)
 
     def is_on_food(self) -> bool:
         """:return: a kigyó feje ennivalón van-e"""
@@ -565,13 +565,13 @@ class Snake2(gym.Env):
 
         :param agent: az AI által használandó model
         """
-        player = ['AI', 'Human']
+        player = [PPOAgent, HumanAgent]
         map_size = [6, 9, 12, 16]
         difficulty = [2, 5, 8]
         diff_name = ['Easy', 'Medium', 'Hard']
         click = False
         player_button = Button(
-            f'Player: {player[self.player_index]}', 30, 50, 20, 400, 100)
+            f'Player: {player[self.player_index].name}', 30, 50, 20, 400, 100)
         size_button = Button(
             f'Map size: {map_size[self.map_index]}', 30, 50, 140, 400, 100)
         difficulty_button = Button(
@@ -583,7 +583,7 @@ class Snake2(gym.Env):
             if player_button.hover():
                 if click:
                     self.player_index = (self.player_index+1) % len(player)
-                    player_button.text = f'Player: {player[self.player_index]}'
+                    player_button.text = f'Player: {player[self.player_index].name}'
             if size_button.hover():
                 if click:
                     self.map_index = (self.map_index+1) % len(map_size)
@@ -592,10 +592,7 @@ class Snake2(gym.Env):
             if start_button.hover():
                 if click:
                     self.dimension = map_size[self.map_index]
-                    if self.player_index == 0:
-                        agent = PPOAgent(agent)
-                    else:
-                        agent = HumanAgent()
+                    agent = player[self.player_index]()
                     self._set_game_variabels()
                     self.ticks = difficulty[self.diff_index]
                     self.game_loop(agent)
@@ -659,7 +656,7 @@ class Button(pygame.Rect):
 
     def draw(self):
         """
-        Kirajzolja a gombot
+        Kirajzolja a gombot0 
         """
         pygame.draw.rect(self.env.screen, self.color, self)
         Button.env.draw_text(self.text, self.font_size, *self.center)
@@ -667,7 +664,7 @@ class Button(pygame.Rect):
 
 def main():
     game = Snake2()
-    game.play()
+    game.play(agent='20x16x8')
 
 
 if __name__ == '__main__':
