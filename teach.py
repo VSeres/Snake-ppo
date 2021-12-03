@@ -151,7 +151,7 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
     env = DummyVecEnv(env)
     if new:
         model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={
-                    'net_arch': [dict(pi=[16, 16], vf=[16, 16, 8])]}, learning_rate=learning_rate)
+                    'net_arch': [dict(pi=[20, 16, 8], vf=[20, 16, 8])]}, learning_rate=learning_rate)
     else:
         model = PPO.load(MODEL, env=env)
         model.learning_rate = learning_rate
@@ -184,4 +184,4 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
 
 if __name__ == '__main__':
     teach(shutdown=True, total_timesteps=1e8, n_epcoh=1,
-          learning_rate=linear_schedule(3e-4), model='16x16-8')
+          learning_rate=linear_schedule(3e-4), model='20x16x8', new=False)
