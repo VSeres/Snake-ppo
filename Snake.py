@@ -516,7 +516,7 @@ class Snake2(gym.Env):
             self.delay(1)
             self.render()
 
-    def play(self, agent: Agent = '16x16-8'):
+    def play(self, model: str = '16x16-8'):
         """
         Ezel a metódussal lehet elindítani a játékot
         megjeleníti a főmenüt
@@ -535,7 +535,7 @@ class Snake2(gym.Env):
 
             if start_button.hover():
                 if click:
-                    self.settings(agent)
+                    self.settings(model)
                     self.screen = pygame.display.set_mode((500, 500))
                     click = False
             if quit_button.hover():
@@ -558,7 +558,7 @@ class Snake2(gym.Env):
                 f'Snake - {self.clock.get_fps():.0f} ticks')
             self.clock.tick(60)
 
-    def settings(self, agent: Agent):
+    def settings(self, model: str):
         """
         A kör elinditása előtti menü megjelenítése
         Itt lehet beállítani a játékos, pálya méretét és a nehézséget
@@ -592,10 +592,10 @@ class Snake2(gym.Env):
             if start_button.hover():
                 if click:
                     self.dimension = map_size[self.map_index]
-                    agent = player[self.player_index]()
+                    model = player[self.player_index](model)
                     self._set_game_variabels()
                     self.ticks = difficulty[self.diff_index]
-                    self.game_loop(agent)
+                    self.game_loop(model)
                     return
             if difficulty_button.hover():
                 if click:
@@ -664,7 +664,7 @@ class Button(pygame.Rect):
 
 def main():
     game = Snake2()
-    game.play(agent='20x16x8')
+    game.play(model='20x16x8')
 
 
 if __name__ == '__main__':

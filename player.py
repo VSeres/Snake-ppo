@@ -20,7 +20,7 @@ class PPOAgent(Agent):
     :vari model_route: abszolút útvonal a modellhez
     """
 
-    def __init__(self, model_name: str = 'main16-16'):
+    def __init__(self, model_name: str = '20x16x8'):
         """
         a modell a ./model mappábol lesz betöltve
 
