@@ -1,17 +1,17 @@
-from numpy.core.fromnumeric import mean, std
-from numpy.lib.function_base import median
-from stable_baselines3 import PPO
-from stable_baselines3.common.base_class import BaseAlgorithm
-from Snake import Snake2
-from stable_baselines3.common.env_checker import check_env
 import time
 import os
 import sys
 from datetime import datetime
 from typing import Callable
-from stable_baselines3.common.vec_env import DummyVecEnv
-from threading import Thread, Lock
 import pathlib
+from threading import Thread, Lock
+from numpy.core.fromnumeric import mean, std
+from numpy.lib.function_base import median
+from stable_baselines3 import PPO
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.vec_env import DummyVecEnv
+from snake import Snake2
 
 
 class WindowsInhibitor:
@@ -107,7 +107,7 @@ def evaluate(n_games: int, model: BaseAlgorithm, size: int) -> dict:
     return statistics
 
 
-def makeEnv(i):
+def make_env(i):
     """
     Létrehoza a DummyVecEnv()-hez szükséges wrapper fügvényeket
 
@@ -116,11 +116,11 @@ def makeEnv(i):
     """
     if i < 1:  # 1
         size = 6
-    elif i < 5:  # 4
+    elif i < 4:  # 3
         size = 9
-    elif i < 9:  # 4
+    elif i < 7:  # 4
         size = 12
-    else:  # 1
+    else:  # 2
         size = 16
 
     def _f() -> Snake2:
@@ -147,11 +147,12 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
     N_EPOCH = n_epcoh
     MODEL = str(pathlib.Path(__file__).parent.resolve())+'\\model\\'+model
     print(f'Model path: {MODEL}')
-    env = [makeEnv(i % 10) for i in range(N_ENV)]
+    env = [make_env(i % 10) for i in range(N_ENV)]
     env = DummyVecEnv(env)
     if new:
         model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={
-                    'net_arch': [dict(pi=[20, 16, 8], vf=[20, 16, 8])]}, learning_rate=learning_rate)
+                    'net_arch': [dict(pi=[20, 16, 8], vf=[20, 16, 8])]},
+                    learning_rate=learning_rate)
     else:
         model = PPO.load(MODEL, env=env)
         model.learning_rate = learning_rate
@@ -183,5 +184,5 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
 
 
 if __name__ == '__main__':
-    teach(shutdown=True, total_timesteps=1e8, n_epcoh=1,
+    teach(shutdown=False, total_timesteps=1e8, n_epcoh=1,
           learning_rate=linear_schedule(3e-4), model='20x16x8', new=False)

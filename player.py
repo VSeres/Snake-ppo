@@ -9,6 +9,7 @@ class Agent:
     :cvar name: Megjelenitéshez használt név
     """
     name: str
+
     def step(self, obs: np.ndarray) -> int:
         raise NotImplementedError
 
@@ -48,6 +49,7 @@ class PPOAgent(Agent):
 class HumanAgent(Agent):
     """Az emberi játékost megvalósítása"""
     name = 'Human'
+
     def __init__(self):
         self.previous_action = 3
 

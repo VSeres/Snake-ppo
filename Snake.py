@@ -1,12 +1,11 @@
 from typing import Any, Tuple, Union
-import pygame
 import sys
 import random
+import colorsys
+import pygame
 import gym
 from gym import spaces
 import numpy as np
-import operator
-import colorsys
 
 from player import Agent, HumanAgent, PPOAgent
 
@@ -31,13 +30,13 @@ class Snake2(gym.Env):
     :ivar dimension: a pálya mérete
     :ivar colors: Szinek a különbözö elemekhez
     """
-    metadata = {'render.modes': ['human']}
 
     def __init__(self, size: int = None):
-        super(Snake2, self).__init__()
+        super().__init__()
 
         self.POSSIBLE_ACTIONS = ['RIGHT', 'LEFT', 'UP', 'DOWN']
         self.thickness = 30
+        self.food = None
         self.dimension = size or 6
         self.action_space = spaces.Discrete(len(self.POSSIBLE_ACTIONS))
         self.observation_space = spaces.Box(
@@ -71,8 +70,8 @@ class Snake2(gym.Env):
         h, l, s = colorsys.rgb_to_hls(*rgb)
         angle_change = 360/4
         angle = 0
-        for key in self.colors.keys():
-            if key == 'background' or key == 'text':
+        for key in self.colors:
+            if key in ('background', 'text'):
                 continue
             hue = h + angle / 360
             angle += angle_change
@@ -143,23 +142,12 @@ class Snake2(gym.Env):
 
         return False
 
-    def distance(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
-        """
-        Visszaadja két pont manhattan távolságát
-
-        :param pos1: első pont
-        :param pos2: második pont
-
-        :return: két pont közötti távolság
-        """
-        return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
-
     def get_state(self) -> np.ndarray:
         """
         Kiszámolja az agentnek a pálya állapotát
 
         :return: pálya állapota
-            8 irányba a távolságot magátol és a pálya szélétől 
+            8 irányba a távolságot magátol és a pálya szélétől
             merre van és milyen mesze az enivaló
             a kinhó fejének és farkának haladási iránya
 
@@ -178,42 +166,42 @@ class Snake2(gym.Env):
         toRB = min(self.dimension - 1-head_x, self.dimension - 1-head_y)
 
         distance_to_wall[UP] = head_y
-        distance_to_wall[RIGHTUP] = self.distance(
+        distance_to_wall[RIGHTUP] = distance(
             (head_x-toLT, head_y-toLT), head)
         distance_to_wall[RIGHT] = self.dimension - 1-head_x
-        distance_to_wall[RIGHTDOWN] = self.distance(
+        distance_to_wall[RIGHTDOWN] = distance(
             (head_x+toRT, head_y-toRT), head)
         distance_to_wall[DOWN] = self.dimension - 1-head_y
-        distance_to_wall[LEFTDOWN] = self.distance(
+        distance_to_wall[LEFTDOWN] = distance(
             (head_x-toLB, head_y+toLB), head)
         distance_to_wall[LEFT] = head_x
-        distance_to_wall[LEFTUP] = self.distance(
+        distance_to_wall[LEFTUP] = distance(
             (head_x+toRB, head_y+toRB), head)
 
         # distance to body
         for part in self.snake[1:]:
-            diagonal = self.diagonal(part, head)
-            distance = self.distance(head, part)
+            part_diagonal = diagonal(part, head)
+            distance_to_part = distance(head, part)
             part_x = part[0]
             part_y = part[1]
-            if diagonal > 0 and distance_to_self[diagonal] > distance:
-                distance_to_self[diagonal] = distance
+            if part_diagonal > 0 and distance_to_self[part_diagonal] > distance_to_part:
+                distance_to_self[part_diagonal] = distance_to_part
                 continue
 
             if head_x == part_x:
                 if part_y-head_y < 0:
-                    if distance_to_self[UP] > distance:
-                        distance_to_self[UP] = distance
+                    if distance_to_self[UP] > distance_to_part:
+                        distance_to_self[UP] = distance_to_part
                 else:
-                    if distance_to_self[DOWN] > distance:
-                        distance_to_self[DOWN] = distance
+                    if distance_to_self[DOWN] > distance_to_part:
+                        distance_to_self[DOWN] = distance_to_part
             elif head_y == part_y:
                 if part_x-head_x > 0:
-                    if distance_to_self[RIGHT] > distance:
-                        distance_to_self[RIGHT] = distance
+                    if distance_to_self[RIGHT] > distance_to_part:
+                        distance_to_self[RIGHT] = distance_to_part
                 else:
-                    if distance_to_self[LEFT] > distance:
-                        distance_to_self[LEFT] = distance
+                    if distance_to_self[LEFT] > distance_to_part:
+                        distance_to_self[LEFT] = distance_to_part
 
         food_direction = (self.food[0] - head_x, self.food[1] - head_y)
 
@@ -226,43 +214,17 @@ class Snake2(gym.Env):
             direction_to_food[0] = 1
         else:
             direction_to_food[2] = 1
-        direction_to_food[4] = self.distance(head, self.food)
+        direction_to_food[4] = distance(head, self.food)
 
         # tail direction
-        tail_direction = Snake2.direction(self.snake[-1], self.snake[-2])
+        tail_direction = direction(self.snake[-1], self.snake[-2])
         # head direction
-        head_direction = Snake2.direction(self.snake[1], head)
+        head_direction = direction(self.snake[1], head)
         return np.concatenate((distance_to_self, distance_to_wall, direction_to_food, head_direction, tail_direction)).astype(np.int16)
 
     def is_on_food(self) -> bool:
         """:return: a kigyó feje ennivalón van-e"""
         return self.snake[0] == self.food
-
-    def diagonal(self, pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
-        """
-        Kiszámolja hogy meilyik átlón van az egyok ponthoz képes a másik
-
-        :return: -1 ha nem átolósak a pontok, 1 jobbra fel, 3 jobbra le, 5 balra le, 7 balra fel
-
-        """
-        if pos1[0] == pos2[0] or pos1[1] == pos2[1]:
-            return -1
-        difference = (pos1[0] - pos2[0], pos1[1] - pos2[1])
-        absulte_value = (abs(difference[0]), abs(difference[1]))
-
-        if(absulte_value[0] == absulte_value[1]):
-            if difference[0] > 0 and difference[1] < 0:
-                return RIGHTUP
-            if difference[0] > 0 and difference[1] > 0:
-                return RIGHTDOWN
-            if difference[0] < 0 and difference[1] > 0:
-                return LEFTDOWN
-            if difference[0] < 0 and difference[1] < 0:
-                return LEFTUP
-        else:
-            return -1
-        # 7 -> \/ <- 1
-        # 5 -> /\ <- 3
 
     def step(self, action: int) -> Union[tuple[np.ndarray, float, bool, dict[str, Any]], None]:
         """
@@ -333,28 +295,6 @@ class Snake2(gym.Env):
         text_rect.center = (x, y)
         self.screen.blit(text_surface, text_rect)
 
-    def direction(pos1: tuple[int, int], pos2: tuple[int, int]) -> Tuple[int, int, int, int]:
-        """
-        Visszaadja a pos1 key képes melyik irányba van a pos2
-
-        :param pos1: x, y koordinátája a referencia pontnak
-        :param pos2: x, y koordinátája a vizsgálandó pontnak
-
-        :return: Az első eleme a felfelé, óramutató irányba haladnak az irányok
-        """
-        dir_x = pos2[0] - pos1[0]
-        dir_y = pos2[1] - pos1[1]
-        direction = [0, 0, 0, 0]
-        if dir_y < 0:
-            direction[0] = 1
-        elif dir_y > 0:
-            direction[2] = 1
-        if dir_x > 0:
-            direction[1] = 1
-        elif dir_x < 0:
-            direction[3] = 1
-        return tuple(direction)
-
     def render(self):
         """
         A pályát kirajzolja a képernyőre
@@ -380,14 +320,13 @@ class Snake2(gym.Env):
 
         line = {'direction': None, 'length': 0, 'start': None}
         for i, pos in enumerate(self.snake[1:]):
-            pos_direction = Snake2.direction(self.snake[i], pos)
-            direction = pos_direction.index(1)
-            if line['direction'] == direction:
+            pos_direction = direction(self.snake[i], pos).index(1)
+            if line['direction'] == pos_direction:
                 line['length'] += 1
             else:
                 self.draw_line(
                     self.colors["body"], line['start'], line['length'], line['direction'])
-                line['direction'] = direction
+                line['direction'] = pos_direction
                 line['length'] = 1
                 line['start'] = pos
         self.draw_line(self.colors["body"], line['start'],
@@ -421,7 +360,7 @@ class Snake2(gym.Env):
           0 felfelé,
           1 jobbra,
           2 lefelé,
-          3 balra 
+          3 balra
         """
         if start_pos is None:
             return
@@ -494,7 +433,7 @@ class Snake2(gym.Env):
             self.render()
             self.clock.tick(self.ticks)
         self._end_screen()
-        return len(self.snake) == self.map_size, info['score'],
+        return len(self.snake) == self.map_size, info['score']
 
     def _end_screen(self):
         """
@@ -656,10 +595,72 @@ class Button(pygame.Rect):
 
     def draw(self):
         """
-        Kirajzolja a gombot0 
+        Kirajzolja a gombot
         """
         pygame.draw.rect(self.env.screen, self.color, self)
         Button.env.draw_text(self.text, self.font_size, *self.center)
+
+
+def distance(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+    """
+    Visszaadja két pont manhattan távolságát
+
+    :param pos1: első pont
+    :param pos2: második pont
+
+    :return: két pont közötti távolság
+    """
+    return abs(pos1[0] - pos2[0]) + abs(pos1[1] - pos2[1])
+
+
+def direction(pos1: tuple[int, int], pos2: tuple[int, int]) -> Tuple[int, int, int, int]:
+    """
+    Visszaadja a pos1 key képes melyik irányba van a pos2
+
+    :param pos1: x, y koordinátája a referencia pontnak
+    :param pos2: x, y koordinátája a vizsgálandó pontnak
+
+    :return: Az első eleme a felfelé, óramutató irányba haladnak az irányok
+    """
+    dir_x = pos2[0] - pos1[0]
+    dir_y = pos2[1] - pos1[1]
+    direction = [0, 0, 0, 0]
+    if dir_y < 0:
+        direction[0] = 1
+    elif dir_y > 0:
+        direction[2] = 1
+    if dir_x > 0:
+        direction[1] = 1
+    elif dir_x < 0:
+        direction[3] = 1
+    return tuple(direction)
+
+
+def diagonal(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
+    """
+    Kiszámolja hogy meilyik átlón van az egyok ponthoz képes a másik
+
+    :return: -1 ha nem átolósak a pontok, 1 jobbra fel, 3 jobbra le, 5 balra le, 7 balra fel
+
+    """
+    if pos1[0] == pos2[0] or pos1[1] == pos2[1]:
+        return -1
+    difference = (pos1[0] - pos2[0], pos1[1] - pos2[1])
+    absulte_value = (abs(difference[0]), abs(difference[1]))
+
+    if absulte_value[0] == absulte_value[1]:
+        if difference[0] > 0 and difference[1] < 0:
+            return RIGHTUP
+        if difference[0] > 0 and difference[1] > 0:
+            return RIGHTDOWN
+        if difference[0] < 0 and difference[1] > 0:
+            return LEFTDOWN
+        if difference[0] < 0 and difference[1] < 0:
+            return LEFTUP
+    else:
+        return -1
+    # 7 -> \/ <- 1
+    # 5 -> /\ <- 3
 
 
 def main():
