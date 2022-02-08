@@ -258,7 +258,7 @@ class Snake2(gym.Env):
         reward = 0
         if self.check_game_over():
             self.game_over = True
-            reward = -4
+            reward = -8
             self.snake.pop()
 
         elif self.is_on_food():
@@ -455,7 +455,7 @@ class Snake2(gym.Env):
             self.delay(1)
             self.render()
 
-    def play(self, model: str = '16x16-8'):
+    def play(self, model: str = '32x16x8'):
         """
         Ezel a metódussal lehet elindítani a játékot
         megjeleníti a főmenüt
@@ -665,7 +665,7 @@ def diagonal(pos1: Tuple[int, int], pos2: Tuple[int, int]) -> int:
 
 def main():
     game = Snake2()
-    game.play(model='20x16x8')
+    game.play(model='32x16x8-512')
 
 
 if __name__ == '__main__':
