@@ -116,11 +116,11 @@ def make_env(i):
     """
     if i < 1:  # 1
         size = 6
-    elif i < 4:  # 3
+    elif i < 7:  # 6
         size = 9
-    elif i < 7:  # 4
+    elif i < 15:  # 8
         size = 12
-    else:  # 2
+    else:  # 5
         size = 16
 
     def _f() -> Snake2:
@@ -145,13 +145,14 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
     """
     N_ENV = n_env
     N_EPOCH = n_epcoh
-    MODEL = str(pathlib.Path(__file__).parent.resolve())+'\\model\\'+model
+    PATH = str(pathlib.Path(__file__).parent.resolve())
+    MODEL = PATH+'\\model\\'+model
     print(f'Model path: {MODEL}')
-    env = [make_env(i % 10) for i in range(N_ENV)]
+    env = [make_env(i % 20) for i in range(N_ENV)]
     env = DummyVecEnv(env)
     if new:
-        model = PPO('MlpPolicy', env, verbose=1, batch_size=512, policy_kwargs={
-                    'net_arch': [dict(pi=[20, 16, 8], vf=[20, 16, 8])]},
+        model = PPO('MlpPolicy', env, verbose=1, batch_size=1024, n_epochs=15, policy_kwargs={
+                    'net_arch': [dict(pi=[32, 16, 8], vf=[32, 16, 8])]},
                     learning_rate=learning_rate)
     else:
         model = PPO.load(MODEL, env=env)
@@ -165,7 +166,7 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
         total_time = end-start
         print(f'training: {total_time:.3f} s')
         model.save(MODEL)
-        with open("log.txt", "a") as log:
+        with open(PATH+"\\log.txt", "a") as log:
             log.write(f'--- {MODEL} ({n+1}) ---\n')
             log.write(
                 f'net_arch: {model.policy_kwargs["net_arch"][0]["pi"]}\n')
@@ -184,5 +185,5 @@ def teach(n_env=40, n_epcoh=1, model='main16-16', shutdown=False, total_timestep
 
 
 if __name__ == '__main__':
-    teach(shutdown=False, total_timesteps=1e8, n_epcoh=1,
-          learning_rate=linear_schedule(3e-4), model='20x16x8', new=False)
+    teach(shutdown=False, total_timesteps=10e7, n_epcoh=1, n_env=60,
+          learning_rate=linear_schedule(2e-4), model='32x16x8-3', new=False)
